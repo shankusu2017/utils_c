@@ -1,6 +1,10 @@
-#include <sys/select.h>
+//#include <sys/select.h>
 #include "time.h"
-
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/time.h>
+#include <unistd.h>
+#if 0
 /* 毫秒级别定时器 */
 void utils_msleep(unsigned long milli_second)
 {
@@ -28,4 +32,16 @@ void utils_usleep(long micro_second)
        	err = select(0, NULL, NULL, NULL, &tv);
     } while (err < 0 && errno == EINTR);
 }
+#endif
 
+void utils_printfms(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+
+    int s = tv.tv_sec;
+    long long ms = ((long long )tv.tv_sec)*1000 + tv.tv_usec/1000;
+    printf("second:%ld\n",tv.tv_sec);  //秒
+    printf("millisecond: %lld\n", ms);
+    // printf("microsecond:%ld\n",tv.tv_sec*1000000 + tv.tv_usec);  //微秒
+}
