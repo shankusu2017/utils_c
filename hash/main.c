@@ -1,8 +1,20 @@
+#include <stdio.h>
 #include "hash.h"
 #include <assert.h>
 
+
+#define REDIRECT_NAT_SOURCE_IP_COUNT 8
+#define DIRECT_NAT_ONE_IP_PORT_MIN 1000
+#define DIRECT_NAT_ONE_IP_PORT_MAX 60999
+#define DIRECT_NAT_ONE_IP_PORT_COUNT ((DIRECT_NAT_ONE_IP_PORT_MAX - DIRECT_NAT_ONE_IP_PORT_MIN) + 1)
+#define DIRECT_NAT_SLOT_TTL (DIRECT_NAT_ONE_IP_PORT_COUNT * REDIRECT_NAT_SOURCE_IP_COUNT)
+#define SY_REDIRECT_NAT_HASH_TABLE_MAX DIRECT_NAT_SLOT_TTL
+
 int main(int argc, char *argv[])
 {
+    printf("hello world %d\n", DIRECT_NAT_ONE_IP_PORT_COUNT);
+    printf("hello world %d\n", DIRECT_NAT_SLOT_TTL);
+    printf("hello world %d\n", SY_REDIRECT_NAT_HASH_TABLE_MAX);
     int key1 = 1;
     int val1 = 100;
     int val11 = 111;
