@@ -12,6 +12,9 @@
 
 int main(int argc, char *argv[])
 {
+    int i, j = 0, 0;
+    printf("i: %d, j: %d\n", i, j);
+
     printf("hello world %d\n", DIRECT_NAT_ONE_IP_PORT_COUNT);
     printf("hello world %d\n", DIRECT_NAT_SLOT_TTL);
     printf("hello world %d\n", SY_REDIRECT_NAT_HASH_TABLE_MAX);
