@@ -9,6 +9,7 @@
                 "-g",
                 "${file}",
                 "${fileDirname}\\hash.c",
+                "${fileDirname}\\..\\time\\time.c",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],

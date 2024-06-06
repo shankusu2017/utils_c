@@ -140,7 +140,7 @@ int hash_delete(hash_table_t *tbl, void *key)
 	printf("0x2f62c919 hash_delete fail, can't find node!");
 	return -1;
 }
-static void *hash_next_node(hash_table_t *tbl, void *key)
+static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
 {
 	size_t h = hash_cal_key(key, tbl->key_len) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
@@ -168,7 +168,7 @@ static void *hash_next_node(hash_table_t *tbl, void *key)
 	return NULL;
 }
 
-void *hash_next(hash_table_t *tbl, void *key)
+hash_node_t *hash_next(hash_table_t *tbl, void *key)
 {
 	if (NULL != key) {
 		return hash_next_node(tbl, key);
