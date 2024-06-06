@@ -158,6 +158,8 @@ static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
 		printf("0x1b8539ae key invalid");
 		return NULL;
 	}
+
+	/* 从下一链开始 */
 	int i = 0;
 	for (i = h+1; i < tbl->bucket_height; ++i) {
 	    node = tbl->nodes[i];
@@ -168,11 +170,16 @@ static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
 	return NULL;
 }
 
+/* 下一个 item
+ * key 为空则 从头开始
+ * 如果要完成的遍历一遍 table, 则遍历的过程中在外层需要锁住表
+*/
 hash_node_t *hash_next(hash_table_t *tbl, void *key)
 {
 	if (NULL != key) {
 		return hash_next_node(tbl, key);
 	}
+
 	int i = 0;
 	for (i = 0; i < tbl->bucket_height; ++i) {
 	    hash_node_t *node = tbl->nodes[i];
