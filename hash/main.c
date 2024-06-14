@@ -80,15 +80,18 @@ int main(int argc, char *argv[])
 
     /* thinkpad x1 windows 环境下 耗时 30 ms */
     int ttl = 0;
-    void *item = hash_next(tbl, NULL);
+    hash_node_t *item = hash_next(tbl, NULL);
+    hash_node_t *next = NULL;
     while (item) {
         ++ttl;
-        //printf("val: %d\n", *(int *)(((hash_node_t *)item)->val));
-        item = hash_next(tbl, ((hash_node_t *)item)->key);
+        //printf("tbl.ttl: %d, val: %d\n", hash_node_ttl(tbl), *(int *)(item->val));
+        next = hash_next(tbl, item->key);
+		hash_delete(tbl, item->key);
+        item = next;
     }
-    printf("hash.item.ttl: %d\n", ttl);
+    printf("\nttl: %d, hash.item.ttl: %d\n", ttl, hash_node_ttl(tbl));
     utils_printfms();
-    printf("hash next done\n");
+    printf("\nhash next and delete done\n");
 
 
     int key_err = -0x73fed09f;

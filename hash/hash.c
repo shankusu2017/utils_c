@@ -155,7 +155,7 @@ static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
         node = node->next;
     }
 	if (node == NULL) {	/* 传入的 key 非法 */
-		printf("0x1b8539ae key invalid");
+		printf("0x1b8539ae key invalid\n");
 		return NULL;
 	}
 

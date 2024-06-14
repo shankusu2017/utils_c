@@ -1,9 +1,38 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
+
+int pp(char ***p, int *ttl)
+{
+    int max = 10;
+    *p = (char **)calloc(max, sizeof(char *));
+    for (int i =0; i < max; ++i) {
+        if (i == 0) {
+            (*p)[i] = "hello";
+        } else if (i == 1) {
+            (*p)[i] = "world";
+        }
+    }
+    *ttl = 2;
+    return 0;
+}
+
 // https://wangdoc.com/clang/lib/time.h#localtimegmtime
-int main(void) {
+int main(char *argv[], int argc) {
+    {
+        char **p;
+        int ttl;
+        pp(&p, &ttl);
+        for (int i = 0; i < ttl; ++i) {
+            printf("--- %s\n", p[i]);
+        }
+        free(p);
+        p = NULL;
+    }
+
+
   char s[128];
   //time_t now = time(NULL);
   time_t now = 0;
