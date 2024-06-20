@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "list.h"
+#include "util.h"
 
 typedef struct packet_s {
     int zh;
@@ -8,32 +9,6 @@ typedef struct packet_s {
     int zt;
     struct list_head  list;	/* 必须放最后面 */
 } packet_t;
-
-
-unsigned host_count(unsigned mask)
-{
-	int bits = 32 - mask;
-	return (1<<bits) - 2;
-}
-
-/*
- * 给出 192.168.15.1/24 的情况下 能分配的主机地址范围
- * 按照规则，192.168.15.0 192.168.15.255 这两个地址不能分配
- */
-int host_range(uint32_t ip, uint32_t bits_mask, uint32_t *head, uint32_t *tail)
-{
-	uint32_t min = 0;
-	uint32_t max = 0;
-
-	/* 网络号 掩码 */
-	uint32_t mask = 0xffffffff;
-	uint32_t net_mask = (mask<<(32-bits_mask));	/* 0xffffff00 */
-	uint32_t host_mask = (mask >> bits_mask);	/* 0x000000ff */
-
-	*head = (ip & net_mask) + 1;	/* 192.168.15.1 */
-	*tail = (ip & net_mask) + host_mask - 1;	/* 192.168.15.254 */
-}
-
 
 int
 main(int argc, char *argv[])
@@ -53,7 +28,7 @@ main(int argc, char *argv[])
     list_add_tail(&pkt2.list, &list_head);
     list_add_tail(&pkt3.list, &list_head);
     list_add_tail(&pkt4.list, &list_head);
-    
+
     struct list_head *node;
 
     packet_t *pkt;
