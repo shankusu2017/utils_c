@@ -14,7 +14,7 @@ extern "C" {
 typedef struct hash_node_s {
 	struct hash_node_s *next;	
 	void *val;
-	char key[0];
+	char key[];
 } hash_node_t;
 
 typedef struct hash_table_s {
@@ -22,7 +22,7 @@ typedef struct hash_table_s {
 
 	size_t node_ttl;		/* 当前存的节点数 */	
 	size_t bucket_height;	/* 哈希桶高 */
-	hash_node_t *nodes[0];
+	hash_node_t *nodes[];
 } hash_table_t;
 
 extern hash_table_t *hash_create(int bucket_height, size_t key_len);

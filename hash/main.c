@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
     printf("hello world %d\n", DIRECT_NAT_ONE_IP_PORT_COUNT);
     printf("hello world %d\n", DIRECT_NAT_SLOT_TTL);
     printf("hello world %d\n", SY_REDIRECT_NAT_HASH_TABLE_MAX);
+    printf("sizeof(hash_node_t): %d\n", sizeof(hash_node_t));
 
     int key1 = -1;
 
