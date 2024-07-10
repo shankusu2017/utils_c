@@ -34,14 +34,14 @@ void utils_usleep(long micro_second)
 }
 #endif
 
-void utils_printfms(void)
+int64_t utils_printfms(void)
 {
     struct timeval tv;
     gettimeofday(&tv,NULL);
 
     int s = tv.tv_sec;
     long long ms = ((long long )tv.tv_sec)*1000 + tv.tv_usec/1000;
-    printf("second:%ld\n",tv.tv_sec);  //秒
     printf("millisecond: %lld\n", ms);
+    return ms;
     // printf("microsecond:%ld\n",tv.tv_sec*1000000 + tv.tv_usec);  //微秒
 }
