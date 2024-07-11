@@ -3,13 +3,13 @@
         {
             "type": "cppbuild",
             "label": "C/C++: gcc.exe build active file",
-            "command": "C:\\Program Files (x86)\\x86_64-8.1.0-release-win32-seh-rt_v6-rev0\\mingw64\\bin\\gcc.exe",
+            "command": "C:\\Program Files\\mingw64\\bin\\gcc.exe",
             "args": [
                 "-fdiagnostics-color=always",
+                "-I../include",
                 "-g",
+                "../threadpool/threadpool.c",
                 "${file}",
-                "${fileDirname}\\..\\hash\\hash.c",
-                "${fileDirname}\\..\\time\\time.c",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],
