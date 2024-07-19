@@ -258,6 +258,11 @@ size_t hash_node_ttl(hash_table_t *tbl)
 	return tbl->node_ttl;
 }
 
+size_t hash_index(hash_table_t *tbl, void *key)
+{
+    return cal_key(key, tbl->key_len) % tbl->bucket_height;
+}
+
 
 
 static size_t cal_short_key_len(hash_short_key_type_t type)
@@ -519,3 +524,7 @@ hash_node_t *hash_short_next(hash_table_t *tbl, hash_short_key_t short_key)
 	return NULL;
 }
 
+size_t hash_short_index(hash_table_t *tbl, hash_short_key_t short_key)
+{
+    return cal_short_key(short_key, tbl->key_type) % tbl->bucket_height;
+}

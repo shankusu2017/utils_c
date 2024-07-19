@@ -60,9 +60,21 @@ int test_table(void)
     }
     assert(ttl == 3);
 
+    /* 删除零散的不规则数据 */
+    item = hash_next(tbl, NULL);
+    hash_node_t *next = NULL;
+    int64_t nA = utils_printfms();
+    int tbl_ttl = hash_node_ttl(tbl);
+    while (item) {
+        next = hash_next(tbl, item->key);
+        hash_delete(tbl, item->key);
+        item = next;
+    }
+    assert(hash_node_ttl(tbl) == 0);
+
     /* 测试大规模插入 */
     printf("------> insert start\n");
-    int64_t nA = utils_printfms();
+    nA = utils_printfms();
     int big_insert_ttl = 1024*64;
     for (int i = 0; i < big_insert_ttl; ++i) {
         int *key_i = (int*)malloc(sizeof(int));
@@ -73,15 +85,15 @@ int test_table(void)
         *val_i = i;
         hash_insert(tbl, key_i, val_i);
     }
-    assert(hash_node_ttl(ttl) == big_insert_ttl + 3);
+    assert(hash_node_ttl(tbl) == big_insert_ttl);
     int64_t dA = utils_printfms();
     printf("<----- insert done, node(%d) cost: %ldms\n", big_insert_ttl, dA - nA);
 
     /* 测试循环性能 */
     nA = utils_printfms();
     ttl = 0;
-    hash_node_t *item = hash_next(tbl, NULL);
-    hash_node_t *next = NULL;
+    item = hash_next(tbl, NULL);
+    next = NULL;
     printf("------>loop start\n");
     while (item) {
         ++ttl;
@@ -102,7 +114,7 @@ int test_table(void)
     next = NULL;
     nA = utils_printfms();
     ttl = 0;
-    int tbl_ttl = hash_node_ttl(tbl);
+    tbl_ttl = hash_node_ttl(tbl);
     while (item) {
         next = hash_next(tbl, item->key);
         hash_delete(tbl, item->key);
@@ -111,7 +123,7 @@ int test_table(void)
     }
     printf("delete done, node.ttl: %d,  table.ttl: %d, cost: %ldms\n", ttl, hash_node_ttl(tbl), utils_printfms() - nA);
     assert(tbl_ttl == ttl);
-    assert(hash_node_ttl(ttl) == 0);
+    assert(hash_node_ttl(tbl) == 0);
 
     printf("<======== hash table test done\n");
 }

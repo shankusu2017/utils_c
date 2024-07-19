@@ -51,7 +51,7 @@ typedef struct hash_node_s {
     /* 长度在 sizeof(int64)内的短 key */
     hash_short_key_t short_key;
 
-    /* 一般的长key */
+    /* 一般key，必须放最后 */
 	char key[];
 } hash_node_t;
 
@@ -66,6 +66,7 @@ extern hash_node_t *hash_find(hash_table_t *tbl, void *key);
 extern int hash_delete(hash_table_t *tbl, void *key);
 extern hash_node_t *hash_next(hash_table_t *tbl, void *key);
 extern size_t hash_node_ttl(hash_table_t *tbl);
+extern size_t hash_index(hash_table_t *tbl, void *key);
 
 /* key 长度固定且在8Byte内 */
 extern hash_table_t *hash_short_create(int bucket_height, hash_short_key_type_t key_type);
@@ -74,6 +75,7 @@ extern hash_node_t *hash_short_find(hash_table_t *tbl, hash_short_key_t short_ke
 extern int hash_short_delete(hash_table_t *tbl, hash_short_key_t short_key);
 extern hash_node_t *hash_short_head(hash_table_t *tbl);
 extern hash_node_t *hash_short_next(hash_table_t *tbl, hash_short_key_t short_key);
+extern size_t hash_short_index(hash_table_t *tbl, hash_short_key_t short_key);
 
 #ifdef __cplusplus
 }
