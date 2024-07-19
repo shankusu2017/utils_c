@@ -64,6 +64,9 @@ extern void hash_free(hash_table_t *tbl);
 extern int hash_insert(hash_table_t *tbl, void *key, void *val);
 extern hash_node_t *hash_find(hash_table_t *tbl, void *key);
 extern int hash_delete(hash_table_t *tbl, void *key);
+/* 为空则从 head 开始找第一个item
+ * 否则找到 key 后的第一个 item
+ */
 extern hash_node_t *hash_next(hash_table_t *tbl, void *key);
 extern size_t hash_node_ttl(hash_table_t *tbl);
 extern size_t hash_index(hash_table_t *tbl, void *key);
