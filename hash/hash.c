@@ -132,14 +132,9 @@ static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, siz
 	return tbl;
 }
 
-hash_table_t *hash_create(int height, size_t len)
+hash_table_t *hash_create(int height, hash_key_type_t key_type, size_t key_void_len)
 {
-    return hash_create_do(height, hash_key_void, len);
-}
-
-hash_table_t *hash_create_keys(int height, hash_key_type_t key_type)
-{
-     return hash_create_do(height, key_type, 0);
+    return hash_create_do(height, key_type, key_void_len);
 }
 
 void hash_free(hash_table_t *tbl)

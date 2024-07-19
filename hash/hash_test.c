@@ -40,7 +40,7 @@ int test_table_void(void)
     *val3 = 300;
 
     /* 测试 insert 中出现 key 相同的情况 */
-    hash_table_t *tbl = hash_create(1024*64, sizeof(int));
+    hash_table_t *tbl = hash_create(1024*64, hash_key_void, sizeof(int));
     hash_insert(tbl, &key1, val1);
     hash_insert(tbl, &key1, val11);
     assert(hash_node_ttl(tbl) == 1);
@@ -133,7 +133,7 @@ int test_table_keys()
     printf("================> table.keys test start\n");
 
     size_t node_ttl = 1024*1024;
-    hash_table_t *tbl = hash_create_keys(node_ttl, hash_key_int32_unsigned);
+    hash_table_t *tbl = hash_create(node_ttl, hash_key_int32_unsigned, 0);
     assert(tbl != NULL);
 
     // test insert

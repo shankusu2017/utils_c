@@ -16,7 +16,7 @@ typedef struct mac_bytes_s {
 } __attribute__((packed)) mac_bytes_t;
 
 typedef enum hash_key_type_e {
-    hash_key_void = 0,
+    hash_key_void = 0,          /* 自定义长度的  void * 类型 */
 
     hash_key_char = 100,
     hash_key_char_unsigned,
@@ -57,8 +57,7 @@ typedef struct hash_node_s {
 typedef struct hash_table_s hash_table_t;
 typedef size_t (*hash_cal_handler)(void *addr, size_t len);
 
-extern hash_table_t *hash_create(int bucket_height, size_t key_len);
-extern hash_table_t *hash_create_keys(int bucket_height, hash_key_type_t key_type);
+extern hash_table_t *hash_create(int bucket_height, hash_key_type_t key_type, size_t key_void_len);
 extern void hash_free(hash_table_t *tbl);
 
 /* void 的key会单独复制一份 key */

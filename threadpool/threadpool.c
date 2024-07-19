@@ -35,13 +35,13 @@ struct threadpool_s {
     int thread_min;		/* 线程池中最小、最大、存活的线程数 */
     int thread_max;
     int thread_alive;
-    struct list_head list_pid_head;
+    struct list_head list_pid_head; /* 存活的线程的 pid 组成的队列 */
 
     int shutdown;       /* 0：不用关闭, others: 需要关闭 */
 };
 
 /* 工作线程流 */
-static void *threadpool_thread(void *threadpool);
+static void *threadpool_thread_work(void *threadpool);
 
 /*创建线程池*/
 threadpool_t *
@@ -91,7 +91,7 @@ threadpool_create(uint32_t thr_num_min, uint32_t thr_num_max, size_t task_size)
                 break;
             }
 
-            int ret = pthread_create(&pinfo->pid, NULL, threadpool_thread, (void *)pool);
+            int ret = pthread_create(&pinfo->pid, NULL, threadpool_thread_work, (void *)pool);
 			if (ret != 0) {
                 break;  /* 初始化阶段，创建失败，可以直接退出 */
 			}
@@ -104,13 +104,13 @@ threadpool_create(uint32_t thr_num_min, uint32_t thr_num_max, size_t task_size)
     } while (0);
 
     /* 释放pool的空间 */
-    threadpool_free(pool);
+    threadpool_close(pool);
     return NULL;
 }
 
-/* 销毁线程池 */
+/* 关闭并销毁线程池 */
 int
-threadpool_free(threadpool_t *pool)
+threadpool_close(threadpool_t *pool)
 {
     if (pool == NULL) {
         return -0x61729e08;
@@ -152,9 +152,9 @@ threadpool_free(threadpool_t *pool)
         struct list_head *node = NULL;
         list_for_each (node, &pool->list_free_head) {
             again = 1;
-            threadpool_task_t *pid = list_entry(node, threadpool_task_t, list);
-            list_del(&pid->list);
-            free(pid);
+            threadpool_task_t *task = list_entry(node, threadpool_task_t, list);
+            list_del(&task->list);
+            free(task);
             close_free_task_ttl++;
             break;
         }
@@ -166,9 +166,9 @@ threadpool_free(threadpool_t *pool)
         struct list_head *node = NULL;
         list_for_each (node, &pool->list_task_head) {
             again = 1;
-            threadpool_task_t *pid = list_entry(node, threadpool_task_t, list);
-            list_del(&pid->list);
-            free(pid);
+            threadpool_task_t *task = list_entry(node, threadpool_task_t, list);
+            list_del(&task->list);
+            free(task);
             close_task_ttl++;
             break;
         }
@@ -188,7 +188,7 @@ static void threadpool_task_done(threadpool_t *pool)
 
 /*工作线程*/
 static void *
-threadpool_thread(void *arg)
+threadpool_thread_work(void *arg)
 {
     threadpool_t *pool = (threadpool_t *)arg;
     threadpool_task_t *task = NULL;
@@ -222,7 +222,7 @@ threadpool_thread(void *arg)
         }
         /* 放入回收队列 */
         pthread_mutex_lock(&(pool->lock));
-        if (!pool->task_size) {
+        if (pool->task_size == 0) {
             //free(task->arg); 函数自己释放 arg
             task->arg = NULL;
         }
@@ -234,10 +234,10 @@ threadpool_thread(void *arg)
     }
 }
 
-threadpool_task_t *malloc_task(threadpool_t *pool)
+threadpool_task_t *threadpool_malloc_fixed_task(threadpool_t *pool)
 {
     /* 任务大小不固定，无法 alloc 固定大小内存*/
-    if (!pool->task_size) {
+    if (pool->task_size == 0) {
         return NULL;
     }
 
@@ -272,30 +272,46 @@ threadpool_task_t *malloc_task(threadpool_t *pool)
 }
 
 /* 添加某个任务时，尝试创建新的线程 */
-static int threadpool_activty_try(threadpool_t *pool)
+static int threadpool_activty_try_do(threadpool_t *pool)
 {
     /* 线程数量达到上限 */
     if (pool->thread_alive >= pool->thread_max) {
-        return -0x64f4e658;
+        return 0;
     }
 
     /* 每个线程剩下不到一个待处理任务 */
     if (pool->thread_alive > pool->list_task_ttl) {
-        return -0x360cf1d9;
+        return 0;
     }
 
-    int ret = pthread_create(NULL, NULL, threadpool_thread, (void *)pool);
+    threadpool_pid_t *pinfo = (threadpool_pid_t *)malloc(sizeof(threadpool_pid_t));
+    if (pinfo == NULL) {
+        return -0x77094f73;
+    }
+
+    int ret = pthread_create(&pinfo->pid, NULL, threadpool_thread_work, (void *)pool);
     if (ret != 0) {
-        /* TODO 线程构建失败,*/
-        return -0x364c61f8;
+        return -0x3c5a31ed;
     }
     pool->thread_alive++;
+    list_add_tail(&pinfo->list, &pool->list_pid_head);
+
+    printf("pool->task.ttl: %d, pool->thread.alive: %d\n", pool->list_task_ttl, pool->thread_alive);
+
     return 0;
+}
+
+static int threadpool_activty_try(threadpool_t *pool)
+{
+    pthread_mutex_lock(&(pool->lock));
+    int ret = threadpool_activty_try_do(pool);
+    pthread_mutex_unlock(&(pool->lock));
+    return ret;
 }
 
 /*向线程池的任务队列中添加一个任务*/
 int
-threadpool_add_task(threadpool_t *pool, threadpool_task_t *task)
+threadpool_add_fixed_task(threadpool_t *pool, threadpool_task_t *task)
 {
     if (NULL == task->fun) {
         printf("func is nil\n");
@@ -312,22 +328,20 @@ threadpool_add_task(threadpool_t *pool, threadpool_task_t *task)
     list_add_tail(&task->list, &pool->list_task_head);
     pool->list_task_ttl++;
 
-    threadpool_activty_try(pool);
-    //printf("0x175ed4f5 pool->task.ttl: %d, pool->thread.alive: %d\n", pool->list_task_ttl, pool->thread_alive);
-
     /* 添加完任务后,队列就不为空了,唤醒线程池中的一个线程 */
     pthread_cond_signal(&(pool->cond_task));
     pthread_mutex_unlock(&(pool->lock));
 
+    threadpool_activty_try(pool);
     return 0;
 }
 
 /*向线程池的任务队列中添加一个任务*/
 int
-threadpool_add_call(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
+threadpool_add_void_task(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
 {
     threadpool_task_t *task = NULL;
-    if (pool->task_size) {
+    if (pool->task_size != 0) {
         printf("must call add task\n");
         return -0x76eb870c;
     }
@@ -355,9 +369,6 @@ threadpool_add_call(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
     list_add_tail(&task->list, &pool->list_task_head);
     pool->list_task_ttl++;
 
-    threadpool_activty_try(pool);
-    printf("pool->task.ttl: %d, pool->thread.alive: %d\n", pool->list_task_ttl, pool->thread_alive);
-
     /*
      * 1： 先解锁再唤醒，那么消费者可能处于不公平地位（考虑解锁后，唤醒前又来了生产者）
      * 2： 先唤醒再解锁，那么消费者和新的生产者将处于平等的竞争地位（也更利于task被快速消耗）
@@ -365,6 +376,19 @@ threadpool_add_call(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
     pthread_cond_signal(&(pool->cond_task));
     pthread_mutex_unlock(&(pool->lock));
 
+    threadpool_activty_try(pool);
+
     return 0;
 }
 
+/* 等待所有任务完成 */
+extern void threadpool_wait_task_done(threadpool_t *pool)
+{
+    pthread_mutex_lock(&(pool->lock));
+    while (!list_empty(&pool->list_free_head)) {
+        pthread_mutex_unlock(&(pool->lock));
+        sleep(1);
+        pthread_mutex_lock(&(pool->lock));
+    }
+    pthread_mutex_unlock(&(pool->lock));
+}
