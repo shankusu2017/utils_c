@@ -21,7 +21,7 @@ static size_t t_cal_key(void *buf, size_t len)
     return seed;
 }
 
-int test_table(void)
+int test_table_void(void)
 {
     int key1 = -1;
 
@@ -56,7 +56,7 @@ int test_table(void)
     while (item) {
         ++ttl;
         //printf("val: %d\n", *(int *)(((hash_node_t *)item)->val));
-        item = hash_next(tbl, ((hash_node_t *)item)->key);
+        item = hash_next(tbl,  hash_key_addr(tbl, item));
     }
     assert(ttl == 3);
 
@@ -66,8 +66,8 @@ int test_table(void)
     int64_t nA = utils_printfms();
     int tbl_ttl = hash_node_ttl(tbl);
     while (item) {
-        next = hash_next(tbl, item->key);
-        hash_delete(tbl, item->key);
+        next = hash_next(tbl, hash_key_addr(tbl, item));
+        hash_delete(tbl, hash_key_addr(tbl, item));
         item = next;
     }
     assert(hash_node_ttl(tbl) == 0);
@@ -98,9 +98,9 @@ int test_table(void)
     while (item) {
         ++ttl;
         //printf("tbl.ttl: %d, val: %d\n", hash_node_ttl(tbl), *(int *)(item->val));
-        next = hash_next(tbl, item->key);
-        assert(*(int *)item->key == *(int *)item->val);
-		//hash_delete(tbl, item->key);
+        next = hash_next(tbl,  hash_key_addr(tbl, item));
+        assert(*(int *)hash_key_addr(tbl, item) == *(int *)item->val);
+		//hash_delete(tbl, hash_key_addr(tbl, item));
         item = next;
     }
     assert(ttl == hash_node_ttl(tbl));
@@ -116,8 +116,8 @@ int test_table(void)
     ttl = 0;
     tbl_ttl = hash_node_ttl(tbl);
     while (item) {
-        next = hash_next(tbl, item->key);
-        hash_delete(tbl, item->key);
+        next = hash_next(tbl, hash_key_addr(tbl, item));
+        hash_delete(tbl, hash_key_addr(tbl, item));
         item = next;
         ttl++;
     }
@@ -128,75 +128,63 @@ int test_table(void)
     printf("<======== hash table test done\n");
 }
 
-int test_new_table(void)
+int test_table_keys()
 {
-    int ttl = 1024*1024;
-    int tbl_height = ttl / 4;
-    t_node_t *node = (t_node_t *)calloc(ttl, sizeof(t_node_t));
-    assert(NULL != node);
+    printf("================> table.keys test start\n");
 
-    for (int i = 0; i < ttl; ++i) {
-        node[i].k = i;
-        int *v = (int *)malloc(sizeof(int));
-        assert(v != NULL);
+    size_t node_ttl = 1024*1024;
+    hash_table_t *tbl = hash_create_keys(node_ttl, hash_key_int32_unsigned);
+    assert(tbl != NULL);
 
-        *v = t_cal_key(&i, sizeof(i));
-        node[i].v = v;
+    // test insert
+    for (size_t i = 0; i < node_ttl; ++i) {
+        hash_key_t key;
+        key.u32 = i;
+        int ret = hash_insert(tbl, &key.u32, NULL);
+        assert(ret == 0);
     }
 
-
-    hash_table_t *new_tbl = hash_short_create(tbl_height, hash_short_key_int32);
-
-    /* 测试插入逻辑 */
-    printf("insert start, node.ttl: %d,  table.ttl: %d\n", ttl, hash_node_ttl(new_tbl));
-    int64_t msA = utils_printfms();
-    hash_short_key_t new_key;
-    for (int i = 0; i < ttl; ++i) {
-        new_key.i32 = node[i].k;
-        hash_short_insert(new_tbl, new_key, node[i].v);
+    // test find
+    for (size_t i = 0; i < node_ttl; ++i) {
+        hash_key_t key;
+        key.u32 = i;
+        hash_node_t *node = hash_find(tbl, &key.u32);
+        assert(NULL != node);
     }
-    assert(hash_node_ttl(new_tbl) == ttl);
-    printf("insert done, node.ttl: %d,  table.ttl: %d, cost: %ldms\n", ttl, hash_node_ttl(new_tbl), utils_printfms() - msA);
+    for (size_t i = node_ttl; i < node_ttl*2; ++i) {
+        hash_key_t key;
+        key.u32 = i;
+        hash_node_t *node = hash_find(tbl, &key.u32);
+        assert(NULL == node);
+    }
 
-    /* 测试循环、查找、逻辑 */
-    printf("loop start, node.ttl: %d,  table.ttl: %d\n", ttl, hash_node_ttl(new_tbl));
-    hash_node_t *item = hash_short_head(new_tbl);
+    //  test delete
+    hash_node_t * item = hash_next(tbl, NULL);
     hash_node_t *next = NULL;
-    msA = utils_printfms();
-    int loop_ttl = 0;
+    size_t tbl_ttl = hash_node_ttl(tbl);
+    size_t ttl = 0;
     while (item) {
-        next = hash_short_next(new_tbl, item->short_key);
-        int v = t_cal_key(&item->short_key.i32, sizeof(item->short_key.i32));
-        int v2 = *((int *)item->val);
-        assert(v == v2);
-        //hash_short_delete(new_tbl, item->short_key);
+        next = hash_next(tbl, hash_key_addr(tbl, item));
+        hash_delete(tbl, hash_key_addr(tbl, item));
         item = next;
-        loop_ttl++;
+        ttl++;
     }
-    printf("loop done, node.ttl: %d,  table.ttl: %d, cost: %ldms\n", loop_ttl, hash_node_ttl(new_tbl), utils_printfms() - msA);
-    assert(loop_ttl == ttl);
-    assert(hash_node_ttl(new_tbl) == ttl);
+    assert(ttl = tbl_ttl);
+    assert(0 == hash_node_ttl(tbl));
 
-    /* 测试删除逻辑 */
-    printf("delete start, node.ttl: %d,  table.ttl: %d\n", ttl, hash_node_ttl(new_tbl));
-    item = hash_short_head(new_tbl);
-    next = NULL;
-    msA = utils_printfms();
-    loop_ttl = 0;
-    while (item) {
-        next = hash_short_next(new_tbl, item->short_key);
-        hash_short_delete(new_tbl, item->short_key);
-        item = next;
-        loop_ttl++;
+    // test find 2
+    for (size_t i = 0; i < node_ttl; ++i) {
+        hash_key_t key;
+        key.u32 = i;
+        hash_node_t *node = hash_find(tbl, &key.u32);
+        assert(NULL == node);
     }
-    printf("delete done, node.ttl: %d,  table.ttl: %d, cost: %ldms\n", loop_ttl, hash_node_ttl(new_tbl), utils_printfms() - msA);
-    assert(loop_ttl == ttl);
-    assert(hash_node_ttl(new_tbl) == 0);
-
-    printf("<======== hash new table test done\n");
+    printf("<================ table.keys test done\n");
+    return 0;
 }
+
 
 int main(int argc, char *argv[])
 {
-    return (test_table() || test_new_table());
+    return (test_table_void() || test_table_keys());
 }
