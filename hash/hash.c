@@ -10,8 +10,9 @@ struct hash_table_s {
     hash_short_key_type_t key_type;
    	size_t key_len;
 
-	size_t node_ttl;		/* 当前节点数 */
-	size_t bucket_height;	/* 桶高 */
+	size_t node_ttl;		    /* 当前节点数 */
+	size_t bucket_height;	    /* 桶高 */
+    hash_cal_fun hash_cal_fun;  /* 计算hash的函数 */
 	hash_node_t *nodes[];
 };
 
@@ -85,6 +86,7 @@ static hash_table_t *hash_create_do(int height, hash_short_key_type_t key_type, 
     tbl->key_type = key_type;
 	tbl->node_ttl = 0;
 	tbl->bucket_height = height;
+    tbl->hash_cal_fun = cal_key;
 
 	/* calloc 申请的内存，所以 nodes 无需再初始化 */
 
@@ -123,7 +125,7 @@ int hash_insert(hash_table_t *tbl, void *key, void *val)
         exit(-0x30d2edba);
     }
 
-	size_t h = cal_key(key, tbl->key_len) % tbl->bucket_height;
+	size_t h = tbl->hash_cal_fun(key, tbl->key_len) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
 
     /* 新值替换旧值 */
@@ -159,7 +161,7 @@ hash_node_t *hash_find(hash_table_t *tbl, void * const key)
         exit(-0x7f2a4990);
     }
 
-	size_t h = cal_key(key, tbl->key_len) % tbl->bucket_height;
+	size_t h = tbl->hash_cal_fun(key, tbl->key_len) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
 
     while (node) {
@@ -178,7 +180,7 @@ int hash_delete(hash_table_t *tbl, void *key)
         exit(-0x64f82bce);
     }
 
-	size_t h = cal_key(key, tbl->key_len) % tbl->bucket_height;
+	size_t h = tbl->hash_cal_fun(key, tbl->key_len) % tbl->bucket_height;
 	hash_node_t *(*pre) = &tbl->nodes[h];
 	hash_node_t *node = tbl->nodes[h];
 
@@ -200,7 +202,7 @@ int hash_delete(hash_table_t *tbl, void *key)
 
 static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
 {
-	size_t h = cal_key(key, tbl->key_len) % tbl->bucket_height;
+	size_t h = tbl->hash_cal_fun(key, tbl->key_len) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
     while (node) {
         if (0 == memcmp(node->key, key, tbl->key_len)) {
@@ -253,14 +255,11 @@ hash_node_t *hash_next(hash_table_t *tbl, void *key)
 	return NULL;
 }
 
-size_t hash_node_ttl(hash_table_t *tbl)
-{
-	return tbl->node_ttl;
-}
+
 
 size_t hash_index(hash_table_t *tbl, void *key)
 {
-    return cal_key(key, tbl->key_len) % tbl->bucket_height;
+    return tbl->hash_cal_fun(key, tbl->key_len) % tbl->bucket_height;
 }
 
 
@@ -335,12 +334,12 @@ static void *cal_short_key_addr(hash_short_key_t *short_key, hash_short_key_type
     }
 }
 
-static size_t cal_short_key(hash_short_key_t short_key, hash_short_key_type_t key_type)
+static size_t cal_short_key(hash_table_t *tbl, hash_short_key_t short_key, hash_short_key_type_t key_type)
 {
     int len = cal_short_key_len(key_type);
     char *data = (char *)cal_short_key_addr(&short_key, key_type);
 
-    return cal_key(data, len);
+    return tbl->hash_cal_fun(data, len);
 }
 
 static int is_short_key_equl(hash_short_key_t keyA, hash_short_key_t keyB, hash_short_key_type_t type)
@@ -393,7 +392,7 @@ int hash_short_insert(hash_table_t *tbl, hash_short_key_t short_key, void *val)
         exit(-0x48c068e6);
     }
 
-	size_t h = cal_short_key(short_key, tbl->key_type) % tbl->bucket_height;
+	size_t h = cal_short_key(tbl, short_key, tbl->key_type) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
 
     /* 新值替换旧值 */
@@ -429,7 +428,7 @@ hash_node_t *hash_short_find(hash_table_t *tbl, hash_short_key_t short_key)
         exit(-0x5f6ad779);
     }
 
-	size_t h = cal_short_key(short_key, tbl->key_type) % tbl->bucket_height;
+	size_t h = cal_short_key(tbl, short_key, tbl->key_type) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
 
     while (node) {
@@ -448,7 +447,7 @@ int hash_short_delete(hash_table_t *tbl, hash_short_key_t short_key)
         exit(-0x2f08aeda);
     }
 
-	size_t h = cal_short_key(short_key, tbl->key_type) % tbl->bucket_height;
+	size_t h = cal_short_key(tbl, short_key, tbl->key_type) % tbl->bucket_height;
 	hash_node_t *(*pre) = &tbl->nodes[h];
 	hash_node_t *node = tbl->nodes[h];
 
@@ -495,7 +494,7 @@ hash_node_t *hash_short_next(hash_table_t *tbl, hash_short_key_t short_key)
         exit(-0x4885223b);
     }
 
-	size_t h = cal_short_key(short_key, tbl->key_type) % tbl->bucket_height;
+	size_t h = cal_short_key(tbl, short_key, tbl->key_type) % tbl->bucket_height;
     hash_node_t *node = tbl->nodes[h];
 
     while (node) {
@@ -526,5 +525,17 @@ hash_node_t *hash_short_next(hash_table_t *tbl, hash_short_key_t short_key)
 
 size_t hash_short_index(hash_table_t *tbl, hash_short_key_t short_key)
 {
-    return cal_short_key(short_key, tbl->key_type) % tbl->bucket_height;
+    return cal_short_key(tbl, short_key, tbl->key_type) % tbl->bucket_height;
+}
+
+
+size_t hash_node_ttl(hash_table_t *tbl)
+{
+	return tbl->node_ttl;
+}
+
+/* 设置 tbl 的hash计算函数 */
+void hash_set_cal_hash_fun(hash_table_t *tbl, hash_cal_fun fun)
+{
+    tbl->hash_cal_fun = fun;
 }

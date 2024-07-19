@@ -56,6 +56,7 @@ typedef struct hash_node_s {
 } hash_node_t;
 
 typedef struct hash_table_s hash_table_t;
+typedef size_t (*hash_cal_fun)(void *addr, size_t len);
 
 extern hash_table_t *hash_create(int bucket_height, size_t key_len);
 extern void hash_free(hash_table_t *tbl);
@@ -68,7 +69,6 @@ extern int hash_delete(hash_table_t *tbl, void *key);
  * 否则找到 key 后的第一个 item
  */
 extern hash_node_t *hash_next(hash_table_t *tbl, void *key);
-extern size_t hash_node_ttl(hash_table_t *tbl);
 extern size_t hash_index(hash_table_t *tbl, void *key);
 
 /* key 长度固定且在8Byte内 */
@@ -79,6 +79,12 @@ extern int hash_short_delete(hash_table_t *tbl, hash_short_key_t short_key);
 extern hash_node_t *hash_short_head(hash_table_t *tbl);
 extern hash_node_t *hash_short_next(hash_table_t *tbl, hash_short_key_t short_key);
 extern size_t hash_short_index(hash_table_t *tbl, hash_short_key_t short_key);
+
+
+/* tbl 存放元素个数 */
+extern size_t hash_node_ttl(hash_table_t *tbl);
+/* 另外设置 tbl 的 hash 计算函数 */
+extern void hash_set_cal_hash_fun(hash_table_t *tbl, hash_cal_fun fun);
 
 #ifdef __cplusplus
 }

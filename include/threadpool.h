@@ -1,5 +1,5 @@
-#ifndef THREADPOOL_H_0X2D46A9D7
-#define THREADPOOL_H_0X2D46A9D7
+#ifndef THREADPOOL_H_2024_07_19_0X2D46A9D7
+#define THREADPOOL_H_2024_07_19_0X2D46A9D7
 
 #include <stdint.h>
 #include "list.h"
@@ -37,4 +37,4 @@ extern int threadpool_add_task(threadpool_t *pool, threadpool_task_t *task);
 extern int threadpool_add_call(threadpool_t *pool, void *(*function)(void *arg), void *arg);
 
 extern int threadpool_free(threadpool_t *pool);
-#endif	/* THREADPOOL_H_0X2D46A9D7 */
+#endif	/* THREADPOOL_H_2024_07_19_0X2D46A9D7 */
