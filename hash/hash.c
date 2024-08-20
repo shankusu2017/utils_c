@@ -38,16 +38,16 @@ static size_t cal_key_len(hash_table_t *tbl)
 
     switch (tbl->key_type) {
     case hash_key_char:
-    case hash_key_char_unsigned:
+    case hash_key_uchar:
         return sizeof(char);
     case hash_key_int16:
-    case hash_key_int16_unsigned:
+    case hash_key_uint16:
         return sizeof(uint16_t);
     case hash_key_int32:
-    case hash_key_int32_unsigned:
+    case hash_key_uint32:
         return sizeof(uint32_t);
     case hash_key_int64:
-    case hash_key_int64_unsigned:
+    case hash_key_uint64:
         return sizeof(uint64_t);
     case hash_key_pointer:
         return sizeof(void *);
@@ -69,19 +69,19 @@ static void *cal_key_addr(hash_table_t *tbl, struct hash_node_s *node)
     switch (tbl->key_type) {
     case hash_key_char:
         return &node->keys.c;
-    case hash_key_char_unsigned:
+    case hash_key_uchar:
         return &node->keys.uc;
     case hash_key_int16:
         return &node->keys.i16;
-    case hash_key_int16_unsigned:
+    case hash_key_uint16:
         return &node->keys.u16;
     case hash_key_int32:
         return &node->keys.i32;
-   case hash_key_int32_unsigned:
+   case hash_key_uint32:
         return &node->keys.u32;
     case hash_key_int64:
         return &node->keys.i64;
-    case hash_key_int64_unsigned:
+    case hash_key_uint64:
         return &node->keys.u64;
     case hash_key_pointer:
         return &node->keys.ptr;
@@ -192,6 +192,7 @@ int hash_insert(hash_table_t *tbl, void *key, void *val)
 	return ERR_OK;
 }
 
+
 hash_node_t *hash_find(hash_table_t *tbl, void * const key)
 {
     size_t key_len = cal_key_len(tbl);
@@ -227,8 +228,21 @@ int hash_delete(hash_table_t *tbl, void *key)
 	    }
 	}
 
-	printf("0x2f62c919 hash_delete fail, can't find node!");
+	printf("0x2f62c919 hash_delete fail, can't find node!\n");
 	return -1;
+}
+
+void *hash_update(hash_table_t *tbl, void *key, void *val)
+{
+    hash_node_t *node = hash_find(tbl, key);
+    if (NULL == node) {
+        return val;
+    }
+
+    void *old = node->val;
+    node->val = val;
+
+    return old; /* 返回旧值，让调用者自己 free */
 }
 
 static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)

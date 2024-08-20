@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "common.h"
 
 
 unsigned host_count(unsigned mask)
@@ -22,4 +23,17 @@ int host_range(uint32_t ip, uint32_t bits_mask, uint32_t *head, uint32_t *tail)
 
 	*head = (ip & net_mask) + 1;	/* 192.168.15.1 */
 	*tail = (ip & net_mask) + host_mask - 1;	/* 192.168.15.254 */
+}
+
+/* "192.168.1.1" 转换为主机字节序的网络地址 */
+uint32_t ip_str_to_value(const char *ip)
+{
+	if (ip == NULL) {
+		return 0;
+	}
+
+    uint32_t ipv4_addr;
+    inet_pton(AF_INET, ip, (void *) &ipv4_addr);
+
+	return ntohl(ipv4_addr);
 }

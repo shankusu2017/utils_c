@@ -5,11 +5,12 @@
  * 链式 哈希表，如果 node_ttl / bucket_height 过大，则查询效率低，
  */
 
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "common.h"
 
 typedef struct mac_bytes_s {
     unsigned char mac[6];
@@ -19,13 +20,13 @@ typedef enum hash_key_type_e {
     hash_key_void = 0,          /* 自定义长度的  void * 类型 */
 
     hash_key_char = 100,
-    hash_key_char_unsigned,
+    hash_key_uchar,
     hash_key_int16,
-    hash_key_int16_unsigned,
+    hash_key_uint16,
     hash_key_int32,
-    hash_key_int32_unsigned,
+    hash_key_uint32,
     hash_key_int64,
-    hash_key_int64_unsigned,
+    hash_key_uint64,
     hash_key_pointer,
     hash_key_mac,
 } hash_key_type_t;
@@ -64,6 +65,11 @@ extern void hash_free(hash_table_t *tbl);
 extern int hash_insert(hash_table_t *tbl, void *key, void *val);
 extern hash_node_t *hash_find(hash_table_t *tbl, void *key);
 extern int hash_delete(hash_table_t *tbl, void *key);
+/* 更新 key 对应的值为 val
+ * RETURNS: 若 key 对应的 node 不存在则直接返回 val
+ * 若 key 对应的 node 存在则返回 node->val 上的旧值
+ */
+extern void *hash_update(hash_table_t *tbl, void *key, void *val);
 /*
  * key 为空则从 head 开始找第一个item
  * 否则找到 key 后的第一个 item

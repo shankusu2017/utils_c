@@ -14,7 +14,6 @@ typedef struct threadpool_pid_s {
     pthread_t pid;
 } threadpool_pid_t;
 
-
 /* 线程池对象 */
 struct threadpool_s {
     pthread_mutex_t lock;  /* 同步锁 */
@@ -310,8 +309,7 @@ static int threadpool_activty_try(threadpool_t *pool)
 }
 
 /*向线程池的任务队列中添加一个任务*/
-int
-threadpool_add_fixed_task(threadpool_t *pool, threadpool_task_t *task)
+int threadpool_add_fixed_task(threadpool_t *pool, threadpool_task_t *task)
 {
     if (NULL == task->fun) {
         printf("func is nil\n");
@@ -336,9 +334,7 @@ threadpool_add_fixed_task(threadpool_t *pool, threadpool_task_t *task)
     return 0;
 }
 
-/*向线程池的任务队列中添加一个任务*/
-int
-threadpool_add_void_task(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
+static int threadpool_add_to_void_task_do(threadpool_t *pool, void *(*fun)(void *arg), void *arg, int forcetoHead)
 {
     threadpool_task_t *task = NULL;
     if (pool->task_size != 0) {
@@ -366,7 +362,11 @@ threadpool_add_void_task(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
 
     task->fun = fun;
     task->arg = arg;
-    list_add_tail(&task->list, &pool->list_task_head);
+    if (forcetoHead) {
+        list_add(&task->list, &pool->list_task_head);
+    } else {
+        list_add_tail(&task->list, &pool->list_task_head);
+    }
     pool->list_task_ttl++;
 
     /*
@@ -381,7 +381,18 @@ threadpool_add_void_task(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
     return 0;
 }
 
-/* 等待所有任务完成 */
+/* 向线程池的任务队列中末尾添加一个任务 */
+int threadpool_add_void_task(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
+{
+    return threadpool_add_to_void_task_do(pool, fun, arg, 0);
+}
+/* 往线程池任务队列的头部插入一个任务 */
+int threadpool_insert_void_task_at_head(threadpool_t *pool, void *(*fun)(void *arg), void *arg)
+{
+    return threadpool_add_to_void_task_do(pool, fun, arg, 1);
+}
+
+/* 等待任务队列被取空 */
 extern void threadpool_wait_task_done(threadpool_t *pool)
 {
     pthread_mutex_lock(&(pool->lock));

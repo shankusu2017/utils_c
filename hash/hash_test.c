@@ -63,7 +63,7 @@ int test_table_void(void)
     /* 删除零散的不规则数据 */
     item = hash_next(tbl, NULL);
     hash_node_t *next = NULL;
-    int64_t nA = utils_printfms();
+    int64_t nA = utils_ms();
     int tbl_ttl = hash_node_ttl(tbl);
     while (item) {
         next = hash_next(tbl, hash_key_addr(tbl, item));
@@ -74,7 +74,7 @@ int test_table_void(void)
 
     /* 测试大规模插入 */
     printf("------> insert start\n");
-    nA = utils_printfms();
+    nA = utils_ms();
     int big_insert_ttl = 1024*64;
     for (int i = 0; i < big_insert_ttl; ++i) {
         int *key_i = (int*)malloc(sizeof(int));
@@ -86,11 +86,11 @@ int test_table_void(void)
         hash_insert(tbl, key_i, val_i);
     }
     assert(hash_node_ttl(tbl) == big_insert_ttl);
-    int64_t dA = utils_printfms();
+    int64_t dA = utils_ms();
     printf("<----- insert done, node(%d) cost: %ldms\n", big_insert_ttl, dA - nA);
 
     /* 测试循环性能 */
-    nA = utils_printfms();
+    nA = utils_ms();
     ttl = 0;
     item = hash_next(tbl, NULL);
     next = NULL;
@@ -105,14 +105,14 @@ int test_table_void(void)
     }
     assert(ttl == hash_node_ttl(tbl));
     printf("<------ loop done, ttl: %d, hash.item.ttl: %d\n", ttl, hash_node_ttl(tbl));
-    printf("\nhash next and delete done, cost: %ldms\n", utils_printfms() - nA);
+    printf("\nhash next and delete done, cost: %ldms\n", utils_ms() - nA);
 
 
     /* 测试删除逻辑 */
     printf("delete start, node.ttl: %d,  table.ttl: %d\n", ttl, hash_node_ttl(tbl));
     item = hash_next(tbl, NULL);
     next = NULL;
-    nA = utils_printfms();
+    nA = utils_ms();
     ttl = 0;
     tbl_ttl = hash_node_ttl(tbl);
     while (item) {
@@ -121,7 +121,7 @@ int test_table_void(void)
         item = next;
         ttl++;
     }
-    printf("delete done, node.ttl: %d,  table.ttl: %d, cost: %ldms\n", ttl, hash_node_ttl(tbl), utils_printfms() - nA);
+    printf("delete done, node.ttl: %d,  table.ttl: %d, cost: %ldms\n", ttl, hash_node_ttl(tbl), utils_ms() - nA);
     assert(tbl_ttl == ttl);
     assert(hash_node_ttl(tbl) == 0);
 
