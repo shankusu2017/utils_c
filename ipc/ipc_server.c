@@ -587,12 +587,19 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
     hash_node_t *node = hash_find(hdl->cli_fd_hash, &cli_uuid);
     if (node) {
         fd = *(int *)node->val;
-    } else { /* 客户端出错等原因，已被删除 */
+    } else { /* 从收到客户端消息到调用回调函数处理完毕，再将结果发回客户端的这个过程中，
+              * 客户端可能已经出错等原因，已被删除，原先的 client_fd 已失效
+              * client fd 可能被用到新的链接上来的 client 上
+              * 故而不能用 fd ，而是要根据 client_uuid, 实时的获取client当前的fd的值
+              */
         pthread_mutex_unlock(&hdl->cli_fd_mutex);
         free(data);
         data = NULL;
         printf("0x5e8ef49f can't find cli: %u\n", cli_uuid);
         return -0x5e8ef49f;
+    }
+    if (fd < 0) {
+        // TODO 
     }
 
     int ret = ipc_send_msg(fd, data);

@@ -65,6 +65,7 @@ typedef struct ipc_server_handler_s {
     ipc_callback cb;            /* 消息回调函数 */
     int pipe[2];                /* recv->callback */
 
+    /* 统计用 */
     uint64_t rcv_byte_ttl;
     uint64_t rcv_pkt_ttl;
     uint64_t send_byte_ttl;
