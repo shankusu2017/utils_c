@@ -2,9 +2,14 @@
 
 utils by c language in linux
 
+
+### 设计目标
+
+* c 语言的脚手架
+
 ### TODO
 
-- #### threadpool 代码优化
+- ### threadpool 代码优化
 
   - 确定性能瓶颈在哪里
 - #### Hash 表 size 动态调整
