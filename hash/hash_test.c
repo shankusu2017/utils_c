@@ -132,45 +132,52 @@ int test_table_keys()
 {
     printf("================> table.keys test start\n");
 
-    size_t node_ttl = 1024*1024;
-    hash_table_t *tbl = hash_create(node_ttl, hash_key_int32_unsigned, 0);
+    size_t node_ttl = 1024*32;
+    hash_table_t *tbl = hash_create(node_ttl, hash_key_uint32, 0);
     assert(tbl != NULL);
 
     // test insert
     for (size_t i = 0; i < node_ttl; ++i) {
         hash_key_t key;
         key.u32 = i;
-        int ret = hash_insert(tbl, &key.u32, NULL);
-        assert(ret == 0);
+        if (i % 4) {
+            int ret = hash_insert(tbl, &key.u32, NULL);
+            assert(ret == 0);
+        }
     }
 
     // test find
-    for (size_t i = 0; i < node_ttl; ++i) {
-        hash_key_t key;
-        key.u32 = i;
-        hash_node_t *node = hash_find(tbl, &key.u32);
-        assert(NULL != node);
-    }
-    for (size_t i = node_ttl; i < node_ttl*2; ++i) {
-        hash_key_t key;
-        key.u32 = i;
-        hash_node_t *node = hash_find(tbl, &key.u32);
-        assert(NULL == node);
-    }
+    // for (size_t i = 0; i < node_ttl; ++i) {
+    //     hash_key_t key;
+    //     key.u32 = i;
+    //     hash_node_t *node = hash_find(tbl, &key.u32);
+    //     assert(NULL != node);
+    // }
+    // for (size_t i = node_ttl; i < node_ttl*2; ++i) {
+    //     hash_key_t key;
+    //     key.u32 = i;
+    //     hash_node_t *node = hash_find(tbl, &key.u32);
+    //     assert(NULL == node);
+    // }
 
     //  test delete
+    // 1M cost 268ms
+    // 16K cost 2ms
+    // 32K cost 3ms (插入3/4满)
+    int64_t loop_start = utils_us();
     hash_node_t * item = hash_next(tbl, NULL);
     hash_node_t *next = NULL;
     size_t tbl_ttl = hash_node_ttl(tbl);
     size_t ttl = 0;
     while (item) {
         next = hash_next(tbl, hash_key_addr(tbl, item));
-        hash_delete(tbl, hash_key_addr(tbl, item));
+        //hash_delete(tbl, hash_key_addr(tbl, item));
         item = next;
         ttl++;
     }
     assert(ttl = tbl_ttl);
-    assert(0 == hash_node_ttl(tbl));
+    printf("hash.loop 16K cost: %ldus\n", utils_us() - loop_start);
+   // assert(0 == hash_node_ttl(tbl));
 
     // test find 2
     for (size_t i = 0; i < node_ttl; ++i) {

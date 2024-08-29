@@ -2,14 +2,18 @@
 #define COMMON_H_20240820181327_0X0CADDBF7
 
 /* 内部用 */
-
+#ifndef _WIN32
 #include <arpa/inet.h> // inet_addr()
 #include <netdb.h>
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <sys/select.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h> // bzero()
-#include <sys/socket.h>
 #include <unistd.h> // read(), write(), close()
 #include <fcntl.h>
 #include <stdint.h>
@@ -17,9 +21,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/types.h>          /* See NOTES */
-#include <sys/epoll.h>
 #include <signal.h>
-#include <sys/select.h>
 
 
 

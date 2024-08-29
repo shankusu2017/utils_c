@@ -14,4 +14,9 @@ int64_t utils_ms(void);
 /* 打印并返回毫秒 */
 int64_t utils_printfms(void);
 
+/* 返回微秒 */
+int64_t utils_us(void);
+/* 打印并返回微秒 */
+int64_t utils_printfus(void);
+
 #endif /* TIME_H_2024_07_19_0X34B32598 */
