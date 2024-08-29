@@ -2,7 +2,6 @@
 
 utils by c language in linux
 
-
 ### 设计目标
 
 * c 语言的脚手架
@@ -19,4 +18,5 @@ utils by c language in linux
 
   - 尝试记录 sync_send 中，内存未释放的行为
   - client 与 server 断开后自动重连
-  - 提供性能
+  - 提高性能
+  - 用UDP实现(需要借助跳跃表？)

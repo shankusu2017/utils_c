@@ -98,6 +98,9 @@ typedef struct ipc_proto_s {
 #define IPC_ACK_ID_NULL 0           /* 无效的 ack_id */
 //////////////////////////////// protocol ////////////////////////////////
 
+/* 一次读取的数据长度 */
+#define IPC_MSG_READ_BLOCK_LEN_MAX (1024*16)
+
 
 
 typedef struct ipc_cli_s {

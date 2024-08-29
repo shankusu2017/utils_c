@@ -359,8 +359,11 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
         if (0 == cli->head_done) {
             want = sizeof(cli->ipc_head) - cli->has_read;
             count = read(cli->fd, (char *)&cli->ipc_head + cli->has_read, want);
-        } else if (0 == cli->buf_done) { 
+        } else if (0 == cli->buf_done) {
             want = cli->ipc_head.ttl - (cli->has_read - sizeof(cli->ipc_head));
+            if (want > IPC_MSG_READ_BLOCK_LEN_MAX) {
+                want = IPC_MSG_READ_BLOCK_LEN_MAX;
+            }
             count = read(cli->fd, (char *)cli->buf + (cli->has_read - sizeof(cli->ipc_head)), want);
         } else {
             ipc_server_close_cli(hdl, cli);
@@ -430,7 +433,7 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                 printf("0x768ab597 EINTR\n");
                 continue;
             } else if (errno == EAGAIN || errno == EWOULDBLOCK) {    /* 对于 noblock 而言，无数据可读 */
-                // TODOD 
+                // TODOD
                 printf("0x75b42200  read fail, EAGAIN or EWOULDBLOCK\n");
                 return 0;
             } else {
