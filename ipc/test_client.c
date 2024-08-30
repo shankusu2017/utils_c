@@ -30,7 +30,31 @@ static int test_sync_send_heartbeat(ipc_client_handler_t *hdl)
     return 0;
 }
 
-int test_void(ipc_client_handler_t *hdl, int times) 
+
+int test_cost(ipc_client_handler_t *hdl)
+{
+    static int idx = 0;
+    int ret = 0;
+    size_t times = 256;
+    int64_t begainT = utils_us();
+    while (times--) {
+        size_t len = 0;
+        util_random(&len, sizeof(len));
+        char *send_buf = (char *)malloc(len);
+        if (send_buf) {
+            ret = ipc_client_async_send(hdl, send_buf, send_len);
+            free(send_buf);
+            if (ret) {
+                return ret;
+            }
+        }
+    }
+    int64_t endT = utils_us();
+    printf("%d async cost: %dus, avg: %dus\n", endT - begainT, (endT- begainT)/256);
+    return 0;
+}
+
+int test_void(ipc_client_handler_t *hdl, int times)
 {
     static int idx = 0;
     int ret = 0;
@@ -142,6 +166,8 @@ int main(int argc, char *argv[])
         printf("init client fail\n");
         return -1;
     }
+
+    test_cost(hdl);
 
     test_void(hdl, 1024*128);
     printf("0x632adc1e test void done\n");
