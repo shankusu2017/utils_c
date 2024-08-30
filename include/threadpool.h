@@ -46,6 +46,8 @@ extern int threadpool_add_fixed_task(threadpool_t *pool, threadpool_task_t *task
  */
 extern void threadpool_wait_task_done(threadpool_t *pool);
 
+extern size_t threadpool_set_task_max(threadpool_t *pool, size_t max);
+
 /* 关闭运行的子线程，销毁未被执行的任务，释放 pool 结构 */
 extern int threadpool_close(threadpool_t *pool);
 

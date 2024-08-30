@@ -106,7 +106,7 @@ static void hash_free_node(hash_node_t *node)
 static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, size_t void_key_len)
 {
 	if (height == 0) {
-		printf("0x2f670a85 args valid(%d:%d:%d) for hash_create!", height, key_type, void_key_len);
+		printf("0x2f670a85 args valid(%ld:%d:%ld) for hash_create!", height, (int)key_type, void_key_len);
 		return NULL;
 	}
 
@@ -153,7 +153,7 @@ void hash_free(hash_table_t *tbl)
 	}
 	/* 数组和表一起释放了，下面无需单独释放 */
 	if (tbl->node_ttl != 0) {
-		printf("0x0cb7eb49 free tbl error ttl: %d", tbl->node_ttl);
+		printf("0x0cb7eb49 free tbl error ttl: %ld", tbl->node_ttl);
 	}
 	free(tbl);
 }

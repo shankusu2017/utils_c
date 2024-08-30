@@ -4,11 +4,14 @@
 
 // RETURNS: 负数，读失败, OTHRES: 剩余读取数(0:读到了指定数量的数据)
 // closed: 0 接口未关闭， 1: 读的过程中，接口被关闭（对方关闭了 sock 等)
-int io_read(int fd, void *buf, size_t left, int *closed)
+int io_read(int fd, void *buf, size_t len, int *closed)
 {
-    *closed = 0;
+    if (closed) {
+        *closed = 0;
+    }
 
     size_t ttl = 0;
+    size_t left = len;
     while (left > 0) {
         int ret = read(fd, (char *)buf + ttl, left);
         if (ret > 0) {
@@ -19,7 +22,9 @@ int io_read(int fd, void *buf, size_t left, int *closed)
                 break;  /* 已读完指定数量的数据 */
             }
         } else if (ret == 0) {  /* 文件尾或者对方关闭了 socket */
-            *closed = 1;
+            if (closed) {
+                *closed = 1;
+            }
             break;
         } else {
             // The call was interrupted by a signal before any data was read
@@ -30,7 +35,7 @@ int io_read(int fd, void *buf, size_t left, int *closed)
                 // block 而言则不会报此错误码
                 break;
             } else {
-                printf("0x09ae5c0e read fail errno: %d, len: %u, left: %u\n",
+                printf("0x09ae5c0e read fail errno: %d, len: %lu, left: %lu\n",
                         errno, ttl, left);
 				return -0x09ae5c0e;
                 //break;
@@ -72,26 +77,4 @@ int io_write(int fd, void *buf, size_t left)
     }
 
     return left;
-}
-
-/*
- * 成功则自动释放 arg
- * 失败，需要上层处理 arg 的释放
- * NOTE: 上层应该避免频繁的发送小包（TCP），否则严重影响性能
- */
-
-// TODO free 放到外面，可优化程序性能
-void *ipc_send_msg(int fd, void *arg)
-{
-    int ret = 0;
-    ipc_proto_t *msg = (ipc_proto_t *)arg;
-
-	ret = io_write(fd, msg, sizeof(msg->head) + msg->head.ttl);
-	if (ret) {
-        printf("0x7959e238 ipc send msg fail, ret: %d", ret);
-        return -0x7959e238;
-    }
-
-    free(msg);
-    return NULL;
 }

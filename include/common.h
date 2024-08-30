@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <sys/select.h>
+#include <netinet/tcp.h>
 #endif
 
 #include <stdio.h>
@@ -20,8 +21,12 @@
 #include <pthread.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/types.h>          /* See NOTES */
 #include <signal.h>
+#include <assert.h>
+#include <linux/unistd.h>
+#include <stdarg.h>
 
 
 

@@ -8,6 +8,13 @@
 #include "tcp_ip.h"
 #include "time.h"
 #include "ipc.h"
+#include "random.h"
+#include "log.h"
+
+
+#define IPC_DEBUG_IO 1
+//#define IPC_CLIENT_SEND_THREADS 1
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,22 +29,18 @@ typedef struct ipc_client_handler_s {
     char server_ip[IPV4_LEN_STR_00];
     uint16_t server_port;
 
-    pthread_rwlock_t rwlock;     /* lock ----------------> */
-    ipc_connect_status_t status;
-    int sockfd;                  /* lock <---------------- */
+    ipc_connect_status_t io_status;
+    int io_sockfd;
+    pthread_mutex_t io_mtx;         /* IO写的互斥(单次发送不能被插队) */
 
+    uint64_t     seq_id;            /* 下一条发送的消息ID */
+    pthread_mutex_t seq_mtx;        /* IO写的互斥(单次发送不能被插队) */
 
-    pthread_mutex_t mutex;      /* mutex ----------------> */
-    pthread_cond_t cond;
-    hash_table_t *seq_hash;     /* 已收到消息的哈西表(限制：send_seq 生成，wait_seq 使用) */
-    uint64_t     seq_id;        /* 下一条发送的消息ID */
-                                /* mutex <---------------- */
+    pthread_cond_t ack_cond;
+    hash_table_t *ack_hash;         /* 已收到消息的哈西表(限制：send_seq 生成，wait_seq 使用) */
+    pthread_mutex_t ack_mtx;
+
     threadpool_t *thread;
-
-    uint64_t rcv_byte_ttl;
-    uint64_t rcv_pkt_ttl;
-    uint64_t send_byte_ttl;
-    uint64_t send_pkt_ttl;
 } ipc_client_handler_t;
 
 
@@ -84,13 +87,16 @@ typedef struct ipc_proto_header_s {
     ipc_msg_type_t msg_type;
     uint64_t seq_id;        /* 发送者这边的发送编号 */
     uint64_t ack_id;        /* 对某个消息的回复编号(0:无效) */
-} ipc_proto_header_t;
+}  __attribute__ ((packed)) ipc_proto_header_t;
 
-/* 协议结构体 */
-typedef struct ipc_proto_s {
+/*
+ * 协议结构体
+ * 不能插入其它结构体
+ */
+typedef struct ipc_proto_packet_s {
     ipc_proto_header_t head;	/* 协议头 */
     char buf[];                 /* 原始的负载 */
-} ipc_proto_t;
+}  __attribute__ ((packed)) ipc_proto_packet_t;
 
 
 #define IPC_SEQ_ID_MIN 10000ULL     /* 保留 [1, 9999] 之间的 id， 0：ZERO-VALUE */
@@ -98,9 +104,11 @@ typedef struct ipc_proto_s {
 #define IPC_ACK_ID_NULL 0           /* 无效的 ack_id */
 //////////////////////////////// protocol ////////////////////////////////
 
-/* 一次读取的数据长度 */
-#define IPC_MSG_READ_BLOCK_LEN_MAX (1024*16)
 
+
+/* 一次读取的数据长度 */
+#define IPC_MSG_READ_BLOCK_LEN_MAX (1024*8)
+#define IPC_SOCK_BUF_LEN (8*1024*1024)
 
 
 typedef struct ipc_cli_s {
@@ -124,6 +132,16 @@ typedef struct ipc_pipe_data_s {
     size_t return_len;
 } ipc_pipe_data_t;
 
+typedef struct packet_io_s {
+    int fd;
+} __attribute__ ((packed)) packet_io_t;
+
+/* 用于发送数据的结构体 */
+typedef struct packet_send_s {
+    packet_io_t io;             /* io 域 */
+    ipc_proto_packet_t *proto_packet; /* 协议头+原始的负载 */
+} __attribute__ ((packed)) packet_send_t;
+
 
 #ifndef IPC_SERVER_CLIENT_MAP_SIZE
 #define IPC_SERVER_CLIENT_MAP_SIZE (1024)
@@ -137,7 +155,9 @@ typedef struct ipc_pipe_data_s {
 #define IPC_CLIENT_ACK_WAIT (3*1000)
 #endif
 
-
+#ifndef IPC_CLIENT_THREAD_POOL_MSG_WAIT_MAX
+#define IPC_CLIENT_THREAD_POOL_MSG_WAIT_MAX 4096
+#endif
 
 #ifdef __cplusplus
 }

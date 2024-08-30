@@ -1,7 +1,7 @@
 #include "time.h"
 #include "common.h"
 
-#if 0
+#ifndef _WIN32
 /* 毫秒级别定时器 */
 void utils_msleep(unsigned long milli_second)
 {

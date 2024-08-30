@@ -1,4 +1,5 @@
 #include "ipc.h"
+#include "log.h"
 
 /*
  * 10K/s 发送和处理包的能力， packet.size从[1,128K]一次递增
@@ -10,15 +11,15 @@ void *callback(ipc_msg_type_t msg_type, void *addr, size_t len, void **return_ad
     static uint64_t rcv_pkt_ttl = 0;
 
     rcv_pkt_ttl++;
-    if (rcv_pkt_ttl % 10000 == 0) {
-        printf("0x3e32785f rcv pkt.ttl: %u\n", rcv_pkt_ttl++);
+    if (++rcv_pkt_ttl % 10000 == 0) {
+        log("0x3e32785f rcv pkt.ttl: %lu\n", rcv_pkt_ttl);
         utils_printfms();
     }
 
     if (msg_type == ipc_msg_type_void) {
-        return;
+        return NULL;
     } else if (msg_type == ipc_msg_type_async_send) {
-        return;
+        return NULL;
     } else if (msg_type == ipc_msg_type_sync_send) {
         // 来什么，复制一份回过去就行
         *return_addr = malloc(len);

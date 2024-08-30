@@ -2,6 +2,7 @@
 #include "ipc_common.h"
 #include "ipc_io.h"
 #include "random.h"
+#include <fcntl.h>
 
 static void *ipc_server_loop_rcv(void *arg);
 static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *cli);
@@ -53,7 +54,7 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
 {
     uint64_t uuid = cli->uuid;
 
-    printf("0x085a33b8 close client, uuid: %p\n", uuid);
+    printf("0x085a33b8 close client, uuid: %lx\n", uuid);
 
     /* 解除 uuid->fd 的映射*/
     pthread_mutex_lock(&hdl->cli_fd_mutex);
@@ -73,7 +74,8 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
     cli->uuid = 0;
 
     /* B: 再 处理 hash */
-    hash_delete(hdl->cli_info_hash, &uuid);
+    hash_delete(hdl->cli_info_hash, &uuid); // cli 无效了
+    cli = NULL;
 
     /* 处理 epoll */
     epoll_ctl(hdl->epoll, EPOLL_CTL_DEL, fd, NULL);
@@ -294,6 +296,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
     printf("server accept the client...\n");
     setnonblocking(fd);
     setnodelay(fd);
+    utils_setrcvbuf(fd, IPC_SOCK_BUF_LEN);
 
     cli = calloc(1, sizeof(ipc_cli_t));
     if (NULL == cli) {
@@ -371,7 +374,7 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
             return -0x34a82f5c;
         }
         if (want != count && count < 65451) {
-            printf("0x474ea942  want: %d, count: %d\n", want, count);
+            //printf("0x474ea942  want: %ld, count: %d\n", want, count);
         }
         if (count > 0) {
             cli->has_read += count;
@@ -386,16 +389,16 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                         cli->buf = malloc(cli->ipc_head.ttl);
                         if (NULL == cli->buf) {
                             ipc_server_close_cli(hdl, cli);
-                            printf("0x48a6af21 realloc for rcv msg fail, realloc.mem.len: %u\n", cli->ipc_head.ttl);
+                            printf("0x48a6af21 realloc for rcv msg fail, realloc.mem.len: %lu\n", cli->ipc_head.ttl);
                             return -0x48a6af21;
                         }
                     }
                 } else if (cli->has_read > sizeof(cli->ipc_head)) {
                     ipc_server_close_cli(hdl, cli);
-                    printf("0x4a9e0f3d run error, %u\n", cli->has_read);
+                    printf("0x4a9e0f3d run error, %lu\n", cli->has_read);
                     return -0x4a9e0f3d;
                 } else {
-                    printf("0x5e325782 pleast wait, want: %d, count: %d\n", want, count);
+                    printf("0x5e325782 pleast wait, want: %ld, count: %d\n", want, count);
                     // go on
                     return 0;
                 }
@@ -404,11 +407,12 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                     cli->buf_done = 1;
                 } else if (cli->has_read > sizeof(cli->ipc_head) + cli->ipc_head.ttl) {
                     ipc_server_close_cli(hdl, cli);
-                    printf("0x73978bc5 run error, %u:%u\n", cli->has_read, cli->ipc_head.ttl);
+                    printf("0x73978bc5 run error, %lu:%lu\n", cli->has_read, cli->ipc_head.ttl);
+                    return -0x73978bc5;
                 }else {
-                    if (count < 65451) {
-                        printf("0x321d0ad0 pleast wait, want: %d, count: %d\n", want, count);
-                    }
+                    //if (count < 65451) {
+                    //    printf("0x321d0ad0 pleast wait, want: %ld, count: %d\n", want, count);
+                    //}
                     // go on
                     return 0;
                 }
@@ -419,7 +423,7 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                 return 1;
             }
             if (count < want) {
-                printf("0x7d879d72 pleast wait, want: %d, count: %d\n", want, count);
+                printf("0x7d879d72 pleast wait, want: %ld, count: %d\n", want, count);
                 return 0;   // 尚有部分要求读的数据未到，有数据后，再继续读
             } else {
                 continue;   /* 读完 head, 接着读 buf */
@@ -472,6 +476,15 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
     ipc_server_reset_cli_proto(cli);
 
     if (pipe_msg->ipc_head.msg_type == ipc_msg_type_void) {
+        #ifdef IPC_DEBUG_IO
+            static size_t rcv_ttl = 0;
+            if (++rcv_ttl % 10000 == 0) {
+                log("0x1958b03e rcv ttl: %ld", rcv_ttl);
+            }
+            ipc_server_free_pipe_msg(pipe_msg);
+            return 0;
+        #endif
+
         // callback
         int ret = io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
         if (ret) {
@@ -571,7 +584,7 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
     uint64_t seq_id = ipc_server_next_seq_id(hdl);
 	int fd = -1;
 
-    ipc_proto_t *data = malloc(sizeof(ipc_proto_header_t) + len);
+    ipc_proto_packet_t *data = malloc(sizeof(ipc_proto_header_t) + len);
     if (NULL == data) {
         printf("0x1f9385ca malloc fail...\n");
         return -0x1f9385ca;
@@ -598,18 +611,18 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
         pthread_mutex_unlock(&hdl->cli_fd_mutex);
         free(data);
         data = NULL;
-        printf("0x5e8ef49f can't find cli: %u\n", cli_uuid);
+        printf("0x5e8ef49f can't find cli: %lu\n", cli_uuid);
         return -0x5e8ef49f;
     }
     if (fd < 0) {
         // TODO 
     }
 
-    int ret = ipc_send_msg(fd, data);
+    int ret = io_write(fd, data, sizeof(data->head) + data->head.ttl);
     pthread_mutex_unlock(&hdl->cli_fd_mutex);
+    free(data);
+	data = NULL;
     if (ret) {
-		free(data);
-		data = NULL;
         printf("0x4eb8c9c8 add task fail, ret: %d", ret);
         return ret;
     }

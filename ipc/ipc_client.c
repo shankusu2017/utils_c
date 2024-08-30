@@ -7,25 +7,25 @@ static void *ipc_client_loop_rcv(void *arg);
 static uint64_t ipc_client_next_seq_id(ipc_client_handler_t *hdl)
 {
     uint64_t next = 0;
-    pthread_mutex_lock(&hdl->mutex);
+    pthread_mutex_lock(&hdl->seq_mtx);
     next = hdl->seq_id;
     hdl->seq_id++;
     if (hdl->seq_id < IPC_SEQ_ID_MIN) {
         hdl->seq_id = IPC_SEQ_ID_MIN;
     }
-    pthread_mutex_unlock(&hdl->mutex);
+    pthread_mutex_unlock(&hdl->seq_mtx);
 
     return next;
 }
 
-/* 插入一个 seq 数据（等待对方 seq 的到来）*/
+/* 插入一个 seq 数据（等待对方 ack 的到来）*/
 static int ipc_client_insert_seq(ipc_client_handler_t *hdl, uint64_t seq_id)
 {
     int ret = 0;
 
-    pthread_mutex_lock(&hdl->mutex);
-    ret = hash_insert(hdl->seq_hash, &seq_id, NULL);
-    pthread_mutex_unlock(&hdl->mutex);
+    pthread_mutex_lock(&hdl->ack_mtx);
+    ret = hash_insert(hdl->ack_hash, &seq_id, NULL);
+    pthread_mutex_unlock(&hdl->ack_mtx);
 
     if (ret) {
         printf("0x4cd98a52 insert seq fail, ret: %d", ret);
@@ -39,55 +39,77 @@ static void ipc_client_delete_seq(ipc_client_handler_t *hdl, uint64_t seq_id)
 {
     int ret = 0;
 
-    pthread_mutex_lock(&(hdl->mutex));
-    ret = hash_delete(hdl->seq_hash, &seq_id);
-    pthread_mutex_unlock(&(hdl->mutex));
+    pthread_mutex_lock(&hdl->ack_mtx);
+    ret = hash_delete(hdl->ack_hash, &seq_id);
+    pthread_mutex_unlock(&hdl->ack_mtx);
 
     if (ret) {
         printf("error 0x4858115b delete fail, ret: %d", ret);
     }
 }
 
+static void *ipc_client_write(void *data)
+{
+    static size_t send_ttl = 0;
+
+    packet_send_t *msg = (packet_send_t *)data;
+    size_t len = sizeof(ipc_proto_packet_t) + msg->proto_packet->head.ttl;
+    int ret = io_write(msg->io.fd, msg->proto_packet, len);
+    if (ret) {
+        log("0x787f6f9e send fail, ret: %d\n", ret);
+        goto write_done;
+    } else {
+        //printf("0x57246fae send done, len: %lu\n", len);
+    }
+
+    if (++send_ttl % 10000 == 0) {
+        log("0x5d29f23e send.ttl: %ld");
+    }
+
+write_done:
+    free(msg->proto_packet);
+    free(msg);
+    msg = NULL;
+    return NULL;
+}
+
 static int ipc_client_send(ipc_client_handler_t *hdl, uint64_t seq_id, ipc_msg_type_t msg_type, void *buf, size_t len)
 {
-    ipc_proto_t *msg = malloc(sizeof(ipc_proto_t) + len);
-    if (NULL == msg) {
+    ipc_proto_packet_t *proto_pkt = (ipc_proto_packet_t*)malloc(sizeof(ipc_proto_packet_t) + len);
+    if (NULL == proto_pkt) {
         printf("0x1f9385ca malloc fail at ipc client send ...\n");
         return -0x1f9385ca;
     }
+    packet_send_t *msg = (packet_send_t*)malloc(sizeof(packet_send_t));
+    if (NULL == msg) {
+        free(proto_pkt);
+        proto_pkt = NULL;
+        printf("0x3cbe5a0f malloc fail at ipc client send ...\n");
+        return -0x3cbe5a0f;
+    }
 
     // PROTOCOL 相关代码， 后同
-    msg->head.ttl = len;
-    msg->head.msg_type = msg_type;
-    msg->head.seq_id = seq_id;
-    msg->head.ack_id = IPC_ACK_ID_NULL;
-
+    proto_pkt->head.ttl = len;
+    proto_pkt->head.msg_type = msg_type;
+    proto_pkt->head.seq_id = seq_id;
+    proto_pkt->head.ack_id = IPC_ACK_ID_NULL;
     if (len) {
-        memcpy(msg->buf, buf, len);
+        memcpy(proto_pkt->buf, buf, len);
     }
 
-    pthread_rwlock_rdlock(&hdl->rwlock);
-    int ret = ipc_send_msg(hdl->sockfd, msg);
-    pthread_rwlock_unlock(&hdl->rwlock);
-    if (ret) {
-        free(msg);
-        msg = NULL;
-        printf("0x4eb8c9c8 client send fail, ret: %d", ret);
-        return ret;
-    }
+    msg->io.fd = hdl->io_sockfd;
+    msg->proto_packet = proto_pkt;
 
-    return ret;
+#ifdef IPC_CLIENT_SEND_THREADS
+    threadpool_add_void_task(hdl->thread, ipc_client_write, msg);
+#else
+    pthread_mutex_lock(&hdl->io_mtx);
+    ipc_client_write(msg);
+    pthread_mutex_unlock(&hdl->io_mtx);
+#endif
+
+    return 0;
 }
-
-
-void ipc_client_reconnect(ipc_client_handler_t *hdl) {
-    while (1) {
-        // connect
-        printf("connect to server......\n");
-        sleep(1);
-    }
-}
-
 
 /*
  * 建立于 server 的链接
@@ -104,19 +126,25 @@ ipc_client_handler_t *ipc_init_client(char *server_ip, uint16_t server_port)
     // fcntl(hdl->pipe[0], F_SETFL, O_NOATIME); /* 提高性能 */
     // fcntl(hdl->pipe[1], F_SETFL, O_NOATIME);
 
-    if (pthread_rwlock_init(&hdl->rwlock, NULL) != 0) {
+    if (pthread_mutex_init(&hdl->io_mtx, NULL) != 0) {
         free(hdl);
         hdl = NULL;
         return hdl;
     }
 
-    if (pthread_mutex_init(&(hdl->mutex), NULL) != 0) {
+    if (pthread_mutex_init(&hdl->seq_mtx, NULL) != 0) {
         free(hdl);
         hdl = NULL;
         return hdl;
     }
-    if (pthread_cond_init(&(hdl->cond), NULL) != 0) {
-        pthread_mutex_destroy(&hdl->mutex);
+
+    if (pthread_mutex_init(&hdl->ack_mtx, NULL) != 0) {
+        free(hdl);
+        hdl = NULL;
+        return hdl;
+    }
+    if (pthread_cond_init(&hdl->ack_cond, NULL) != 0) {
+        pthread_mutex_destroy(&hdl->ack_mtx);
         free(hdl);
         hdl = NULL;
         return hdl;
@@ -124,10 +152,10 @@ ipc_client_handler_t *ipc_init_client(char *server_ip, uint16_t server_port)
 
     strncpy(hdl->server_ip, server_ip, ARRAY_SIZE(hdl->server_ip));
     hdl->server_port = server_port;
-    hdl->status = ipc_connect_status_fail;
-    hdl->sockfd = -1;
+    hdl->io_status = ipc_connect_status_fail;
+    hdl->io_sockfd = -1;
+    hdl->ack_hash = NULL;
     hdl->thread = NULL;
-    hdl->seq_hash = NULL;
 
     hdl->seq_id = IPC_SEQ_ID_MIN;
     int ret = util_random(&hdl->seq_id, sizeof(hdl->seq_id));
@@ -138,38 +166,40 @@ ipc_client_handler_t *ipc_init_client(char *server_ip, uint16_t server_port)
         hdl->seq_id = IPC_SEQ_ID_MIN;
     }
 
-    hdl->sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (hdl->sockfd == -1) {
+    hdl->io_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (hdl->io_sockfd == -1) {
         printf("-0x5e173d0a socket creation failed...\n");
         goto err_uninit;
     }
-    ret = setnodelay(hdl->sockfd);    /* ipc 基本用于本机通信，效率为主 */
+    ret = setnodelay(hdl->io_sockfd);    /* ipc 基本用于本机通信，效率为主 */
     if (ret) {
         printf("0x1ec22172 set nodelay fail, ret: %d\n", ret);
     }
+    utils_setrcvbuf(hdl->io_sockfd , IPC_SOCK_BUF_LEN);
 
     struct sockaddr_in servaddr;
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr(server_ip);
     servaddr.sin_port = htons(server_port);
-    if (connect(hdl->sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
+    if (connect(hdl->io_sockfd , (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
         printf("0x603ea840 connection failed...\n");
-        hdl->status = ipc_connect_status_fail;
+        hdl->io_status = ipc_connect_status_fail;
         goto err_uninit;    /* NOTE: 初始化阶段，链接失败直接返回，后续通信过程中，失败可以 retry */
     } else {
-        hdl->status = ipc_connect_status_done;
+        hdl->io_status = ipc_connect_status_done;
     }
 
-    hdl->seq_hash = hash_create(IPC_CLIENT_SEQ_HASH_SIZE, hash_key_uint64, 0);
-    if (NULL == hdl->seq_hash) {
+    hdl->ack_hash = hash_create(IPC_CLIENT_SEQ_HASH_SIZE, hash_key_uint64, 0);
+    if (NULL == hdl->ack_hash) {
         goto err_uninit;
     }
 
-    hdl->thread = threadpool_create(1, 1, 0);   /* 1 for rcv */
+    hdl->thread = threadpool_create(2, 2, 0);   /* 1 rcv, 1 send */
     if (NULL == hdl->thread) {
         goto err_uninit;
     }
+    threadpool_set_task_max(hdl->thread, IPC_CLIENT_THREAD_POOL_MSG_WAIT_MAX);
     threadpool_add_void_task(hdl->thread, ipc_client_loop_rcv, hdl);
     // 等待 接收线程跑起来
     threadpool_wait_task_done(hdl->thread);
@@ -181,25 +211,88 @@ err_uninit:
         threadpool_close(hdl->thread);
         hdl->thread = NULL;
     }
-    if (NULL != hdl->seq_hash) {
-        hash_free(hdl->seq_hash);
-        hdl->seq_hash = NULL;
+    if (NULL != hdl->ack_hash) {
+        hash_free(hdl->ack_hash);
+        hdl->ack_hash = NULL;
     }
-    if (-1 != hdl->sockfd) {
-        close(hdl->sockfd);
-        hdl->sockfd = -1;
-        hdl->status = ipc_connect_status_fail;
+    if (-1 != hdl->io_sockfd ) {
+        close(hdl->io_sockfd );
+        hdl->io_sockfd  = -1;
+        hdl->io_status = ipc_connect_status_fail;
     }
 
-    pthread_cond_destroy(&hdl->cond);
-    pthread_mutex_destroy(&hdl->mutex);
-    pthread_rwlock_destroy(&hdl->rwlock);
+    pthread_cond_destroy(&hdl->ack_cond);
+    pthread_mutex_destroy(&hdl->ack_mtx);
+    pthread_mutex_destroy(&hdl->seq_mtx);
+    pthread_mutex_destroy(&hdl->io_mtx);
 
     free(hdl);
     hdl = NULL;
     return hdl;
 }
 
+/*
+ * 关闭 socket, 开始不断的重连
+*/
+void ipc_client_reconnect(ipc_client_handler_t *hdl, int reason) {
+    printf("0x3093c4ea reconnection at: %x......\n", reason);
+
+    pthread_mutex_lock(&hdl->io_mtx);
+    close(hdl->io_sockfd );
+    hdl->io_sockfd  = -1;
+    hdl->io_status = ipc_connect_status_fail;
+    pthread_mutex_unlock(&hdl->io_mtx);
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    while (fd < 0) {
+        sleep(1);
+        fd = socket(AF_INET, SOCK_STREAM, 0);
+    }
+    pthread_mutex_lock(&hdl->io_mtx);
+    hdl->io_sockfd  = fd;
+    pthread_mutex_unlock(&hdl->io_mtx);
+    int ret = setnodelay(hdl->io_sockfd );    /* ipc 基本用于本机通信，效率为主 */
+    if (ret) {
+        printf("0x0d4715bc set nodelay fail, ret: %d\n", ret);
+    }
+    utils_setrcvbuf(hdl->io_sockfd , IPC_SOCK_BUF_LEN);
+
+
+    while (1) {
+        pthread_mutex_lock(&hdl->seq_mtx);
+        int ret = util_random(&hdl->seq_id, sizeof(hdl->seq_id));
+        if (ret) {
+            pthread_mutex_unlock(&hdl->seq_mtx);
+            sleep(1);
+            printf("0x187d8b58 get random fail, ret: %d\n", ret);
+        } else {
+            if (hdl->seq_id < IPC_SEQ_ID_MIN) {
+                hdl->seq_id = IPC_SEQ_ID_MIN;
+            }
+            pthread_mutex_unlock(&hdl->seq_mtx);
+            break;
+        }
+    }
+
+    struct sockaddr_in servaddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(hdl->server_ip);
+    servaddr.sin_port = htons(hdl->server_port);
+
+    while (1) {
+        if (connect(hdl->io_sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) {
+            printf("0x603ea840 reconnection fail......\n");
+            utils_msleep(64);
+        } else {
+            pthread_mutex_lock(&hdl->io_mtx);
+            hdl->io_status = ipc_connect_status_done;
+            pthread_mutex_unlock(&hdl->io_mtx);
+            break;
+        }
+    }
+    printf("0x1159dc1d reconnection done...\n");
+}
 
 // 客户端
 static void *ipc_client_loop_rcv(void *arg)
@@ -209,67 +302,51 @@ static void *ipc_client_loop_rcv(void *arg)
     ipc_proto_header_t head;
 
     while (1) {
-        pthread_rwlock_rdlock(&hdl->rwlock);
-        int ret = io_read(hdl->sockfd, &head, sizeof(head), &closed);
-        pthread_rwlock_unlock(&hdl->rwlock);
+        int ret = io_read(hdl->io_sockfd , &head, sizeof(head), &closed);
         if (ret || closed) {    /* 没读完，报错，或者是被关闭等 */
-            // ERROR
-            printf("0x7f839461 io.read fail, ret: %d", ret);
-
-            pthread_rwlock_wrlock(&hdl->rwlock);
-            close(hdl->sockfd);
-            hdl->sockfd = -1;
-            hdl->status = ipc_connect_status_fail;
-            pthread_rwlock_unlock(&hdl->rwlock);
-            ipc_client_reconnect(hdl);  /* reconnect........ */
+            printf("0x7f839461 io.read fail, ret: %d\n", ret);
+            ipc_client_reconnect(hdl, 0x7f839461);  /* reconnect........ */
             continue;
         }
-        if (head.ttl < sizeof(head)) {
-            // ERROR
-        }
         if (head.seq_id < IPC_SEQ_ID_MIN) {
-            // ERROR
+            ipc_client_reconnect(hdl, 0x3ba3bb2c);
+            continue;
         }
 
-        ipc_proto_t *msg = (ipc_proto_t*)malloc(sizeof(ipc_proto_header_t) + head.ttl);
+        ipc_proto_packet_t *msg = (ipc_proto_packet_t*)malloc(sizeof(ipc_proto_header_t) + head.ttl);
         if (NULL == msg) {
-            // ERROR
+            ipc_client_reconnect(hdl, 0x650beacb);
+            continue;
         }
         memcpy(&msg->head, &head, sizeof(head));
 
-        pthread_rwlock_rdlock(&hdl->rwlock);
-        ret = io_read(hdl->sockfd, msg->buf, head.ttl, &closed);
-        pthread_rwlock_unlock(&hdl->rwlock);
+        ret = io_read(hdl->io_sockfd , msg->buf, head.ttl, &closed);
         if (ret || closed) {
-            // ERROR
-            pthread_rwlock_wrlock(&hdl->rwlock);
-            close(hdl->sockfd);
-            hdl->sockfd = -1;
-            hdl->status = ipc_connect_status_fail;
-            pthread_rwlock_unlock(&hdl->rwlock);
-            ipc_client_reconnect(hdl);  /* reconnect........ */
             printf("0x17073c93 read fail, ret: %d, closed: %d\n", ret, closed);
+            ipc_client_reconnect(hdl, 0x17073c93);  /* reconnect........ */
+            continue;
         }
 
         if (msg->head.msg_type == ipc_msg_type_async_ack ||
             msg->head.msg_type == ipc_msg_type_sync_ack) {
             if (head.ack_id < IPC_SEQ_ID_MIN) {
-                // ERROR
+                ipc_client_reconnect(hdl, 0x13a5edcb);  /* reconnect........ */
+                continue;
             }
 
-            pthread_mutex_lock(&hdl->mutex);
-            hash_node_t *node = hash_find(hdl->seq_hash, &msg->head.ack_id);
+            pthread_mutex_lock(&hdl->ack_mtx);
+            hash_node_t *node = hash_find(hdl->ack_hash, &msg->head.ack_id);
             if (NULL == node) {
                 printf("0x025a4313 warn ack too later");
-                pthread_cond_signal(&hdl->cond);
-                pthread_mutex_unlock(&hdl->mutex);
+                pthread_cond_signal(&hdl->ack_cond);
+                pthread_mutex_unlock(&hdl->ack_mtx);
                 free(msg);
                 msg = NULL;
             } else {
                 // node 的删除，由 wait_ack 处理
                 node->val = msg;
-                pthread_cond_signal(&hdl->cond);
-                pthread_mutex_unlock(&hdl->mutex);
+                pthread_cond_signal(&hdl->ack_cond);
+                pthread_mutex_unlock(&hdl->ack_mtx);
             }
         } else {    /* 收到了不应该收到的信息类型 */
             printf("0x73676262 client rcv invalid msg(%d)\n", msg->head.msg_type);
@@ -301,11 +378,11 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
     outtime.tv_nsec = now.tv_usec * 1000 + (wait_millisecond%1000)*1000*1000;
 
     int ret = 0;
-    pthread_mutex_lock(&hdl->mutex);
-    hash_table_t *hash = hdl->seq_hash;
+    pthread_mutex_lock(&hdl->ack_mtx);
+    hash_table_t *hash = hdl->ack_hash;
     hash_node_t *node = hash_find(hash, &seq_id);
     if (NULL == node) {
-        pthread_mutex_unlock(&hdl->mutex);
+        pthread_mutex_unlock(&hdl->ack_mtx);
         printf("0x790396ad run error, can't find sync-ack data in hash\n");
         return -0x790396ad;
     }
@@ -313,10 +390,10 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
     ret = 0;
     while (NULL == node->val) {
         if (wait_millisecond == 0) {
-            ret = pthread_cond_wait(&hdl->cond, &hdl->mutex);
+            ret = pthread_cond_wait(&hdl->ack_cond, &hdl->ack_mtx);
         } else {
             // TODO 需要每次都更新 outtime 时间吗？
-            ret = pthread_cond_timedwait(&hdl->cond, &hdl->mutex, &outtime);
+            ret = pthread_cond_timedwait(&hdl->ack_cond, &hdl->ack_mtx, &outtime);
             if (ret == ETIMEDOUT) {
                 printf("0x7fb4cf84 wait time out\n");
                 break;
@@ -326,15 +403,15 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
         }
     }
     if (ret) {
-        pthread_mutex_unlock(&hdl->mutex);
-        printf("0x4f885afb run warn, wait ack timeout, ret \n", ret);
+        pthread_mutex_unlock(&hdl->ack_mtx);
+        printf("0x4f885afb run warn, wait ack timeout, ret %d\n", ret);
         return -0x4f885afb;
     }
 
     /* 取出接收的数据，用 NULL 更新 hash,避免 hash_delete 时一同被删 */
-    ipc_proto_t *msg = (ipc_proto_t *)hash_update(hash, &seq_id, NULL);
+    ipc_proto_packet_t *msg = (ipc_proto_packet_t *)hash_update(hash, &seq_id, NULL);
     hash_delete(hash, &seq_id);
-    pthread_mutex_unlock(&hdl->mutex);
+    pthread_mutex_unlock(&hdl->ack_mtx);
 
     if (msg) {
         if (free_hdl) {

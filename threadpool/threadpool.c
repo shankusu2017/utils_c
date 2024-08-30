@@ -1,11 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <signal.h>
-#include <assert.h>
-#include <string.h>
-#include <errno.h>
-#include <stdint.h>
+#include "common.h"
 #include "threadpool.h"
 
 /* 任务 */
@@ -22,6 +15,8 @@ struct threadpool_s {
     pthread_cond_t cond_task;
     struct list_head list_task_head;
     size_t list_task_ttl;
+
+    size_t list_task_max;    /* 任务队列最大的排队数，超过则阻塞到任务数量下降后添加才返回 */
 
     /* 任务的大小，
      * 0：没有固定值，task 无法重复利用
@@ -67,13 +62,15 @@ threadpool_create(uint32_t thr_num_min, uint32_t thr_num_max, size_t task_size)
         INIT_LIST_HEAD(&pool->list_task_head);
         pool->list_task_ttl = 0;
 
+        pool->list_task_max = 0;
+
         pool->task_size = task_size;
         INIT_LIST_HEAD(&pool->list_free_head);
 
 
         /* 初始化线程变量 */
         if ((thr_num_max == 0) || (thr_num_max < thr_num_min)) {
-            printf("thr num invalid, min: %d, max: %d");
+            printf("thr num invalid, min: %u, max: %u", thr_num_min, thr_num_max);
             break;
         }
         pool->thread_min = thr_num_min;
@@ -96,7 +93,7 @@ threadpool_create(uint32_t thr_num_min, uint32_t thr_num_max, size_t task_size)
 			}
             pool->thread_alive++;
             list_add_tail(&pinfo->list, &pool->list_pid_head);
-            printf("new pthread.id: %d\n", pinfo->pid);
+            printf("new pthread.id: %ld\n", pinfo->pid);
         }
 
         return pool;
@@ -136,7 +133,7 @@ threadpool_close(threadpool_t *pool)
             threadpool_pid_t *pid = list_entry(node, threadpool_pid_t, list);
             list_del(&pid->list);
             pthread_mutex_unlock(&(pool->lock));
-            printf("wait thread: %d exit\n", pid->pid);
+            printf("wait thread: %ld exit\n", pid->pid);
             pthread_join(pid->pid, NULL);
             free(pid);
             close_thread_ttl++;
@@ -173,7 +170,7 @@ threadpool_close(threadpool_t *pool)
         }
     }
     pthread_mutex_unlock(&(pool->lock));
-    printf("close thread: %d, close free task: %d, close task: %d\n",
+    printf("0x07f7c8ae close thread: %d, close free task: %d, close task: %d\n",
         close_thread_ttl, close_free_task_ttl, close_task_ttl);
 
     return 0;
@@ -210,6 +207,7 @@ threadpool_thread_work(void *arg)
         node = pool->list_task_head.next;
         list_del(node);
         pool->list_task_ttl--;
+        pthread_cond_signal(&pool->cond_task);
         pthread_mutex_unlock(&(pool->lock));
 
         task = list_entry(node, threadpool_task_t, list);
@@ -295,7 +293,7 @@ static int threadpool_activty_try_do(threadpool_t *pool)
     pool->thread_alive++;
     list_add_tail(&pinfo->list, &pool->list_pid_head);
 
-    printf("pool->task.ttl: %d, pool->thread.alive: %d\n", pool->list_task_ttl, pool->thread_alive);
+    printf("pool->task.ttl: %ld, pool->thread.alive: %d\n", pool->list_task_ttl, pool->thread_alive);
 
     return 0;
 }
@@ -349,6 +347,10 @@ static int threadpool_add_to_void_task_do(threadpool_t *pool, void *(*fun)(void 
         return -0x7d1a4672;
     }
 
+    while (pool->list_task_max && pool->list_task_ttl >= pool->list_task_max) {
+        pthread_cond_wait(&pool->cond_task, &pool->lock);
+    }
+
     if (!list_empty(&pool->list_free_head)) {
         struct list_head *node = pool->list_free_head.next;
         list_del(node);
@@ -395,11 +397,21 @@ int threadpool_insert_void_task_at_head(threadpool_t *pool, void *(*fun)(void *a
 /* 等待任务队列被取空 */
 extern void threadpool_wait_task_done(threadpool_t *pool)
 {
-    pthread_mutex_lock(&(pool->lock));
-    while (!list_empty(&pool->list_free_head)) {
-        pthread_mutex_unlock(&(pool->lock));
+    pthread_mutex_lock(&pool->lock);
+    while (!list_empty(&pool->list_task_head)) {
+        pthread_mutex_unlock(&pool->lock);
         sleep(1);
         pthread_mutex_lock(&(pool->lock));
     }
     pthread_mutex_unlock(&(pool->lock));
+}
+
+extern size_t threadpool_set_task_max(threadpool_t *pool, size_t max)
+{
+    pthread_mutex_lock(&pool->lock);
+    size_t old = pool->list_task_max;
+    pool->list_task_max = max;
+    pthread_cond_signal(&pool->cond_task);
+    pthread_mutex_unlock(&pool->lock);
+    return old;
 }
