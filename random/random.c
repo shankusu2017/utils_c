@@ -13,7 +13,7 @@ int util_random(void *buf, size_t len)
     size_t left = len;
     size_t ttl = 0;
     while (left > 0) {
-        int ret = read(fd, buf + ttl, left);
+        int ret = read(fd,  (char *)buf + ttl, left);
         if (ret > 0) {
             left -= ret;
             ttl += ret;
