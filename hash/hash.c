@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "memory.h"
+#include "crc.h"
 #include "hash.h"
 
 #define ERR_OK 0
@@ -19,15 +21,16 @@ struct hash_table_s {
 /* 缺省的 hash 计算函数 */
 static size_t hash_cal(void *buf, size_t len)
 {
-    size_t seed = 0x460613c7 + len;     /* seed */
-    size_t step = (len >> 5) + 1;       /* 预防 len 过大 */
-	char *data = (char *)buf;
+    return ((size_t)util_crc64(UINT64_C(0X3C66C56408F84898), (const unsigned char *)buf, (uint64_t)len));
+    // size_t seed = 0x460613c7 + len;     /* seed */
+    // size_t step = (len >> 5) + 1;       /* 预防 len 过大 */
+	// char *data = (char *)buf;
 
-    for (; len >= step; len -= step) {  /* compute hash */
-        seed = seed ^ ((seed << 5) + (seed >> 2) + (unsigned char)(data[len - 1]));
-    }
+    // for (; len >= step; len -= step) {  /* compute hash */
+    //     seed = seed ^ ((seed << 5) + (seed >> 2) + (unsigned char)(data[len - 1]));
+    // }
 
-    return seed;
+    // return seed;
 }
 
 static size_t cal_key_len(hash_table_t *tbl)
@@ -96,10 +99,10 @@ static void *cal_key_addr(hash_table_t *tbl, struct hash_node_s *node)
 
 static void hash_free_node(hash_node_t *node)
 {
-	free(node->val);
+	util_free(node->val);
 	node->val = NULL;
 	node->next = NULL;
-	free(node);
+	util_free(node);
     node = NULL;
 }
 
@@ -110,7 +113,7 @@ static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, siz
 		return NULL;
 	}
 
-	hash_table_t *tbl = calloc(1, sizeof(struct hash_table_s) + sizeof(struct hash_node_s*) * height);
+	hash_table_t *tbl = util_calloc(1, sizeof(struct hash_table_s) + sizeof(struct hash_node_s*) * height);
 	if (NULL == tbl) {
 		printf("0x3f98e3c9 calloc mem fail for hash_create!");
 		return NULL;
@@ -155,7 +158,7 @@ void hash_free(hash_table_t *tbl)
 	if (tbl->node_ttl != 0) {
 		printf("0x0cb7eb49 free tbl error ttl: %ld", tbl->node_ttl);
 	}
-	free(tbl);
+	util_free(tbl);
 }
 
 
@@ -168,7 +171,7 @@ int hash_insert(hash_table_t *tbl, void *key, void *val)
     /* 新值替换旧值 */
     while (node) {
         if (0 == memcmp(cal_key_addr(tbl, node), key, key_len)) {
-			free(node->val);
+			util_free(node->val);
             node->val = val;
             return ERR_OK;
         }
@@ -176,7 +179,7 @@ int hash_insert(hash_table_t *tbl, void *key, void *val)
     }
 
 	/* 插入全新值 */
-	node = (hash_node_t *)malloc(sizeof(hash_node_t) + tbl->void_key_len);
+	node = (hash_node_t *)util_malloc(sizeof(hash_node_t) + tbl->void_key_len);
 	if (NULL == node) {
 		printf("0x6488e857 calloc fail for hash_insert!");
 		return -0x6488e857;
@@ -236,7 +239,7 @@ void *hash_update(hash_table_t *tbl, void *key, void *val)
 {
     hash_node_t *node = hash_find(tbl, key);
     if (NULL == node) {
-        return val;
+        return NULL;
     }
 
     void *old = node->val;
