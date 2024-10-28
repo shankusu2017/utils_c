@@ -61,26 +61,40 @@ typedef size_t (*hash_cal_handler)(void *addr, size_t len);
 extern hash_table_t *hash_create(int bucket_height, hash_key_type_t key_type, size_t key_void_len);
 extern void hash_free(hash_table_t *tbl);
 
-/* void 的key会单独复制一份 key */
+/* void 的 key 会单独复制一份，其它类型的 key 进行值拷贝
+ * val 会被值拷贝，释放 tbl 时会被一起释放
+ */
 extern int hash_insert(hash_table_t *tbl, void *key, void *val);
+
+/* 参考代码
+ *   hash_node_t *item = hash_next(tbl, NULL);
+ *   hash_node_t *next = NULL;
+ *   while (item) {
+ *       next = hash_next(tbl, hash_key_addr(tbl, item));
+ *       hash_delete(tbl, hash_key_addr(tbl, item));
+ *       item = next;
+ *   }
+*/
 extern hash_node_t *hash_find(hash_table_t *tbl, void *key);
 extern int hash_delete(hash_table_t *tbl, void *key);
-/* 更新 key 对应的值为 val
- * RETURNS: 若 key 对应的 node 不存在则直接返回 val
- * 若 key 对应的 node 存在则返回 node->val 上的旧值
- */
-extern void *hash_update(hash_table_t *tbl, void *key, void *val);
+
 /*
  * key 为空则从 head 开始找第一个item
  * 否则找到 key 后的第一个 item
  */
 extern hash_node_t *hash_next(hash_table_t *tbl, void *key);
 
+/* 更新 key 对应的值为 val
+ * RETURNS: 若 key 对应的 node 不存在则直接返回 val
+ * 若 key 对应的 node 存在则返回 node->val 上的旧值
+ */
+extern void *hash_update(hash_table_t *tbl, void *key, void *val);
+
 extern void *hash_key_addr(hash_table_t *tbl, hash_node_t *node);
 
 /* tbl 已存放元素个数 */
 extern size_t hash_node_ttl(hash_table_t *tbl);
-/* 另外设置 tbl 的 hash 计算函数 */
+/* 设置独立的 tbl hash 计算函数 */
 extern void hash_set_cal_hash_handler(hash_table_t *tbl, hash_cal_handler handler);
 
 #ifdef __cplusplus
