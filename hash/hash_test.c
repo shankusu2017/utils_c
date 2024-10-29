@@ -3,12 +3,13 @@
 #include <stdio.h>
 #include "hash.h"
 #include "memory.h"
+#include "common.h"
 
 
 int test_table_void(void)
 {
     hash_table_t *tbl = hash_create(1024*64, hash_key_void, sizeof(int));
-    const size large_size = 1024*2048;
+    const size_t large_size = 1024*2048;
 
     {
         /* same key */
