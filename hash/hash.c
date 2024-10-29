@@ -113,7 +113,7 @@ static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, siz
 		return NULL;
 	}
 
-	hash_table_t *tbl = util_calloc(1, sizeof(struct hash_table_s) + sizeof(struct hash_node_s*) * height);
+	hash_table_t *tbl = util_calloc(sizeof(struct hash_table_s) + sizeof(struct hash_node_s*) * height);
 	if (NULL == tbl) {
 		printf("0x3f98e3c9 calloc mem fail for hash_create!");
 		return NULL;
