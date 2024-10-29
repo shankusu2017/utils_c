@@ -37,7 +37,8 @@ static size_t used_memory = 0;
 
 /* 申请内存, 自带size.head
  * mem: size.head + free.mem */
-void *util_malloc(size_t size) {
+void *util_malloc(size_t size)
+{
 	/* The  malloc()  function  allocates  size bytes and returns a pointer to the allocated memory.  
 	 * The memory is not initialized */
     void *ptr = malloc(size+sizeof(size_t));
@@ -61,7 +62,8 @@ void *util_calloc(size_t size)
 }
 
 /* 调整已申请的内存块 */
-void *util_realloc(void *ptr, size_t size) {
+void *util_realloc(void *ptr, size_t size)
+{
     void *realptr;
     size_t oldsize;
     void *newptr;
@@ -81,7 +83,8 @@ void *util_realloc(void *ptr, size_t size) {
 }
 
 /* 释放内存 */
-void util_free(void *ptr) {
+void util_free(void *ptr)
+{
     void *realptr;
     size_t oldsize;
 
@@ -93,6 +96,7 @@ void util_free(void *ptr) {
 }
 
 /* 返回已消耗的内存总量 */
-size_t util_malloc_used_memory(void) {
+size_t util_malloc_used_memory(void)
+{
     return used_memory;
 }
