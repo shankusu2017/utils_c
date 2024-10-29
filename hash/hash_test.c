@@ -8,6 +8,8 @@
 
 int test_table_void(void)
 {
+    printf("0x5b1ccf5a test void hash\n");
+
     hash_table_t *tbl = hash_create(1024*64, hash_key_void, sizeof(int));
     const size_t large_size = 1024*2048;
 
@@ -68,7 +70,7 @@ int test_table_void(void)
         ttl--;
     }
     assert(ttl == 0);
-    printf("loop done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
+    printf("0x70b354d1 loop done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
 
 
     /* 测试 delete */
@@ -91,12 +93,13 @@ int test_table_void(void)
     hash_free(tbl);
     assert(0== util_malloc_used_memory());
 
-    printf("<======== hash table test done\n");
+    printf("0x3fe98825 <======== void hash table test done\n");
+    return 0;
 }
 
 int test_table_keys(void)
 {
-    printf("================> table.keys test start\n");
+    printf("0x7efbb6ff ================> table.keys test start\n");
 
     size_t node_ttl = 1024*4096;
     hash_table_t *tbl = hash_create(node_ttl, hash_key_uint32, 0);
@@ -127,12 +130,14 @@ int test_table_keys(void)
     hash_free(tbl);
     assert(0== util_malloc_used_memory());
 
-    printf("<================ table.keys test done\n");
+    printf("0x0e6b0583 <================ table.keys test done\n");
     return 0;
 }
 
 
 int main(int argc, char *argv[])
 {
-    return (test_table_void() || test_table_keys());
+    int ret = (test_table_void() || test_table_keys());
+    assert(ret == 0);
+    return 0;
 }
