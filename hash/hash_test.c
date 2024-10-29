@@ -37,7 +37,7 @@ int test_table_void(void)
         int *val = NULL;
         for (int i = 0; i < large_size; ++i) {
             val = (int *)util_malloc(sizeof(int));
-            if（NULL == val）{
+            if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
             } else {
@@ -51,7 +51,7 @@ int test_table_void(void)
      {   /* look */
         int *val = NULL;
         for (int i = 0; i < large_size; ++i) {
-            hash_node_t *node = hash_find(tbl, i);
+            hash_node_t *node = hash_find(tbl, &i);
             assert(node != NULL);
             assert(i == *((int *)node->val));
         }
@@ -68,22 +68,24 @@ int test_table_void(void)
         ttl--;
     }
     assert(ttl == 0);
-    printf("loop done, node.ttl: %d,  cost: %ldms\n", large_size, utils_ms() - nA);
+    printf("loop done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
 
 
     /* 测试 delete */
-    nA = utils_ms();
-    ttl = hash_node_ttl(tbl);
-    hash_node_t *item = hash_next(tbl, NULL);
-    hash_node_t *next = NULL;
-    while (item) {
-        next = hash_next(tbl, hash_key_addr(tbl, item));
-        hash_delete(tbl, hash_key_addr(tbl, item));
-        item = next;
-        assert(hash_node_ttl(tbl) == --ttl);
+    {
+        nA = utils_ms();
+        ttl = hash_node_ttl(tbl);
+        hash_node_t *item = hash_next(tbl, NULL);
+        hash_node_t *next = NULL;
+        while (item) {
+            next = hash_next(tbl, hash_key_addr(tbl, item));
+            hash_delete(tbl, hash_key_addr(tbl, item));
+            item = next;
+            assert(hash_node_ttl(tbl) == --ttl);
+        }
+        assert(hash_node_ttl(tbl) == 0);
+        printf("delete done, node.ttl: %d,  cost: %ldms\n", large_size, utils_ms() - nA);
     }
-    assert(hash_node_ttl(tbl) == 0);
-    printf("delete done, node.ttl: %d,  cost: %ldms\n", large_size, utils_ms() - nA);
 
     /* test memory */
     hash_free(tbl);
