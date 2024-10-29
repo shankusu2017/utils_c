@@ -84,7 +84,7 @@ int test_table_void(void)
             assert(hash_node_ttl(tbl) == --ttl);
         }
         assert(hash_node_ttl(tbl) == 0);
-        printf("delete done, node.ttl: %d,  cost: %ldms\n", large_size, utils_ms() - nA);
+        printf("delete done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
     }
 
     /* test memory */
