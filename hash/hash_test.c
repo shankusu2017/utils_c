@@ -17,7 +17,7 @@ int test_table_void(void)
         int *val = NULL;
         for (int i = 0; i < large_size; ++i) {
             val = (int *)util_malloc(sizeof(int));
-            if（NULL == val）{
+            if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
             } else {
