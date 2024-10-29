@@ -66,7 +66,7 @@ void *util_realloc(void *ptr, size_t size) {
     size_t oldsize;
     void *newptr;
 
-    if (ptr == NULL) return zmalloc(size);	/* 申请崭新的MEM */
+    if (ptr == NULL) return util_malloc(size);	/* 申请崭新的MEM */
 	
     realptr = (char*)ptr-sizeof(size_t);
     oldsize = *((size_t*)realptr);
