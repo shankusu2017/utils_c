@@ -1,7 +1,3 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include "memory.h"
 #include "crc.h"
 #include "hash.h"
@@ -10,7 +6,7 @@
 
 struct hash_table_s {
     hash_key_type_t key_type;
-   	size_t void_key_len;     /* 特殊键的长度 */
+   	size_t mem_key_len;     /* 内存键的长度 */
 
 	size_t node_ttl;    /* 当前已存放的节点数 */
 	size_t height;	    /* 桶高 */
@@ -18,27 +14,117 @@ struct hash_table_s {
 	hash_node_t *nodes[];
 };
 
+
+struct hash_node_s {
+	struct hash_node_s *next;
+
+	void *val;
+
+    /* 各种常见类型的 KEY */
+    hash_key_t keys;
+    /********************************
+     ********************************
+     *** MAYBE MEMORY FOR MEM_KEY ***
+     ********************************
+     ********************************/
+};
+
 /* 缺省的 hash 计算函数 */
 static size_t hash_cal(void *buf, size_t len)
 {
     return ((size_t)util_crc64(UINT64_C(0X3C66C56408F84898), (const unsigned char *)buf, (uint64_t)len));
-    // size_t seed = 0x460613c7 + len;     /* seed */
-    // size_t step = (len >> 5) + 1;       /* 预防 len 过大 */
-	// char *data = (char *)buf;
-
-    // for (; len >= step; len -= step) {  /* compute hash */
-    //     seed = seed ^ ((seed << 5) + (seed >> 2) + (unsigned char)(data[len - 1]));
-    // }
-
-    // return seed;
 }
 
-static size_t cal_key_len(hash_table_t *tbl)
+// RETURNS: 0 mean equal, others: not equal
+static inline int hash_key_compare(hash_key_type_t key_type, size_t key_len, hash_key_t key_a, hash_key_t key_b)
 {
-    if (tbl->key_type == hash_key_void) {
-        return tbl->void_key_len;
-    }
+    int i = 0;
 
+    switch (key_type) {
+    case hash_key_char:
+        return (key_a.c == key_b.c ) ? 0 : 1;
+    case hash_key_uchar:
+        return (key_a.uc == key_b.uc ) ? 0 : 1;
+    case hash_key_int16:
+        return (key_a.i16 == key_b.i16) ? 0 : 1;
+    case hash_key_uint16:
+        return (key_a.u16 == key_b.u16) ? 0 : 1;
+    case hash_key_int32:
+        return (key_a.i32 == key_b.i32) ? 0 : 1;
+    case hash_key_uint32:
+        return (key_a.u32 == key_b.u32) ? 0 : 1;
+    case hash_key_int64:
+        return (key_a.i64 == key_b.i64) ? 0 : 1;
+    case hash_key_uint64:
+        return (key_a.u64 == key_b.u64) ? 0 : 1;
+    case hash_key_pointer:
+        return (key_a.ptr == key_b.ptr) ? 0 : 1;
+    case hash_key_mac:
+        for (i = 0; i < MAC_LEN_BYTES; ++i) {
+            if (key_a.mac.bytes[i] != key_b.mac.bytes[i]) {
+                return 1;
+            }
+        }
+        return 0;
+    case hash_key_mem:
+        return memcmp(key_a.mem, key_b.mem, key_len);
+    default:
+        printf("0x70e05102 key.type invalid %d", tbl->key_type);
+        exit(-0x70e05102);
+        break;
+    }
+}
+
+// RETURNS: 0 mean equal, others: not equal
+static inline void hash_key_copy(hash_key_type_t key_type, size_t key_len, hash_key_t *key_a, hash_key_t key_b)
+{
+    int i = 0;
+
+    switch (key_type) {
+    case hash_key_char:
+        key_a->c = key_b.c;
+        break;
+    case hash_key_uchar:
+        key_a->uc = key_b.uc;
+        break;
+    case hash_key_int16:
+        key_a->i16 = key_b.i16;
+        break;
+    case hash_key_uint16:
+        key_a->u16 = key_b.u16;
+        break;
+    case hash_key_int32:
+        key_a->i32 = key_b.i32;
+        break;
+    case hash_key_uint32:
+        key_a->u32 = key_b.u32;
+        break;
+    case hash_key_int64:
+        key_a->i64 = key_b.i64;
+        break;
+    case hash_key_uint64:
+        key_a->u64 = key_b.u64;
+        break;
+    case hash_key_pointer:
+        key_a->ptr = key_b.ptr;
+        break;
+    case hash_key_mac:
+        for (i = 0; i < MAC_LEN_BYTES; ++i) {
+            key_a->mac.bytes[i] = key_b.mac.bytes[i];
+        }
+        break;
+    case hash_key_mem:
+        memcpy(key_a->mem, key_b.mem, key_len);
+        break;
+    default:
+        printf("0x70e05102 key.type invalid %d", tbl->key_type);
+        exit(-0x70e05102);
+        break;
+    }
+}
+
+static inline size_t cal_key_len(hash_table_t *tbl)
+{
     switch (tbl->key_type) {
     case hash_key_char:
     case hash_key_uchar:
@@ -56,6 +142,8 @@ static size_t cal_key_len(hash_table_t *tbl)
         return sizeof(void *);
     case hash_key_mac:
         return sizeof(mac_bytes_t);
+    case hash_key_mem:
+        return tbl->mem_key_len;
     default:
         printf("0x70e05102 key.type invalid %d", tbl->key_type);
         exit(-0x70e05102);
@@ -63,41 +151,40 @@ static size_t cal_key_len(hash_table_t *tbl)
     }
 }
 
-static void *cal_key_addr(hash_table_t *tbl, struct hash_node_s *node)
+static inline void *cal_key_addr2(hash_key_type_t key_type, hash_key_t key)
 {
-    if (hash_key_void == tbl->key_type) {
-        return node->key_void;
-    }
-
-    switch (tbl->key_type) {
+    switch (key_type) {
     case hash_key_char:
-        return &node->keys.c;
+        return &key.keys.c;
     case hash_key_uchar:
-        return &node->keys.uc;
+        return &key.keys.uc;
     case hash_key_int16:
-        return &node->keys.i16;
+        return &key.keys.i16;
     case hash_key_uint16:
-        return &node->keys.u16;
+        return &key.keys.u16;
     case hash_key_int32:
-        return &node->keys.i32;
+        return &key.keys.i32;
    case hash_key_uint32:
-        return &node->keys.u32;
+        return &key.keys.u32;
     case hash_key_int64:
-        return &node->keys.i64;
+        return &key.keys.i64;
     case hash_key_uint64:
-        return &node->keys.u64;
+        return &key.keys.u64;
     case hash_key_pointer:
-        return &node->keys.ptr;
+        return &key.keys.ptr;
     case hash_key_mac:
-        return &node->keys.mac;
+        return &key.keys.mac;
+    case hash_key_mem:
+        return key.keys.mem;    /* 直接返回指向的地址 */
     default:
-        printf("0x60bf65f1 key.type invalid %d", tbl->key_type);
-        exit(-0x60bf65f1);
+        printf("0x11c9cb57 key.type invalid %d", tbl->key_type);
+        exit(-0x11c9cb57);
         break;
     }
 }
 
-static void hash_free_node(hash_node_t *node)
+
+static inline void hash_free_node(hash_node_t *node)
 {
 	util_free(node->val);
 	node->val = NULL;
@@ -106,10 +193,10 @@ static void hash_free_node(hash_node_t *node)
     node = NULL;
 }
 
-static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, size_t void_key_len)
+static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, size_t mem_key_len)
 {
 	if (height == 0) {
-		printf("0x2f670a85 args valid(%ld:%d:%ld) for hash_create!", height, (int)key_type, void_key_len);
+		printf("0x2f670a85 args valid(%ld:%d:%ld) for hash_create!", height, (int)key_type, mem_key_len);
 		return NULL;
 	}
 
@@ -119,10 +206,10 @@ static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, siz
 		return NULL;
 	}
 
-    if (key_type == hash_key_void) {
-        tbl->void_key_len = void_key_len;
+    if (key_type == hash_key_mem) {
+        tbl->mem_key_len = mem_key_len;
     } else {
-        tbl->void_key_len = 0;
+        tbl->mem_key_len = 0;
     }
 
     tbl->key_type = key_type;
@@ -162,15 +249,15 @@ void hash_free(hash_table_t *tbl)
 }
 
 
-int hash_insert(hash_table_t *tbl, void *key, void *val)
+int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(key, key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
     hash_node_t *node = tbl->nodes[h];
 
     /* 新值替换旧值 */
     while (node) {
-        if (0 == memcmp(cal_key_addr(tbl, node), key, key_len)) {
+        if (0 == hash_key_compare(tbl->key_type, key_len, node->keys, key)) {
 			util_free(node->val);
             node->val = val;
             return ERR_OK;
@@ -179,13 +266,18 @@ int hash_insert(hash_table_t *tbl, void *key, void *val)
     }
 
 	/* 插入全新值 */
-	node = (hash_node_t *)util_malloc(sizeof(hash_node_t) + tbl->void_key_len);
+	node = (hash_node_t *)util_malloc(sizeof(hash_node_t) + tbl->mem_key_len);
 	if (NULL == node) {
 		printf("0x6488e857 calloc fail for hash_insert!");
 		return -0x6488e857;
 	}
-	node->val = val;
-	memcpy(cal_key_addr(tbl, node), key, key_len);
+    if (0 == tbl->mem_key_len) {
+        node->keys.mem == NULL
+    } else {
+        node->keys.mem = node + 1;
+    }
+	hash_key_copy(tbl->key_type, key_len, node->keys, key);
+	node->val = val;    /* 值：浅赋值 */
 
 	/* 加到链表 */
 	node->next = tbl->nodes[h];
@@ -196,14 +288,14 @@ int hash_insert(hash_table_t *tbl, void *key, void *val)
 }
 
 
-hash_node_t *hash_find(hash_table_t *tbl, void * const key)
+hash_node_t *hash_find(hash_table_t *tbl, hash_key_t key)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(key, key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
     hash_node_t *node = tbl->nodes[h];
 
     while (node) {
-        if (0 == memcmp(cal_key_addr(tbl, node), key, key_len)) {
+        if (0 == hash_key_compare(tbl->key_type, key_len, node->keys, key)) {
             return node;
         }
         node = node->next;
@@ -212,15 +304,15 @@ hash_node_t *hash_find(hash_table_t *tbl, void * const key)
 	return NULL;
 }
 
-int hash_delete(hash_table_t *tbl, void *key)
+int hash_delete(hash_table_t *tbl, hash_key_t key)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(key, key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
 	hash_node_t *(*pre) = &tbl->nodes[h];
 	hash_node_t *node = tbl->nodes[h];
 
 	while (node) {
-	    if (0 == memcmp(cal_key_addr(tbl, node), key, key_len)) {
+	    if (0 == hash_key_compare(tbl->key_type, key_len, node->keys, key)) {
 			*pre = node->next;
 			hash_free_node(node);
 			--tbl->node_ttl;
@@ -235,7 +327,7 @@ int hash_delete(hash_table_t *tbl, void *key)
 	return -1;
 }
 
-void *hash_update(hash_table_t *tbl, void *key, void *val)
+void *hash_update(hash_table_t *tbl, hash_key_t key, void *val)
 {
     hash_node_t *node = hash_find(tbl, key);
     if (NULL == node) {
@@ -248,13 +340,13 @@ void *hash_update(hash_table_t *tbl, void *key, void *val)
     return old; /* 返回旧值，让调用者自己 free */
 }
 
-static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
+static hash_node_t *hash_next_node(hash_table_t *tbl, hash_key_t key)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(key, key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
     hash_node_t *node = tbl->nodes[h];
     while (node) {
-        if (0 == memcmp(cal_key_addr(tbl, node), key, key_len)) {
+        if (0 == hash_key_compare(tbl->key_type, key_len, node->keys, key)) {
             if (node->next) {
 				return node->next;	/* 直接返回下一个 item */
             } else {
@@ -283,10 +375,10 @@ static hash_node_t *hash_next_node(hash_table_t *tbl, void *key)
  * key 为空则 从头开始
  * 如果要完成的遍历一遍 table, 则遍历的过程中在外层需要锁住表
 */
-hash_node_t *hash_next(hash_table_t *tbl, void *key)
+hash_node_t *hash_next(hash_table_t *tbl, hash_key_t *key)
 {
 	if (NULL != key) {
-		return hash_next_node(tbl, key);
+		return hash_next_node(tbl, *key);
 	}
 
 	int i = 0;
@@ -302,7 +394,7 @@ hash_node_t *hash_next(hash_table_t *tbl, void *key)
 
 void *hash_key_addr(hash_table_t *tbl, hash_node_t *node)
 {
-    return cal_key_addr(tbl, node);
+    return node->keys;
 }
 
 size_t hash_node_ttl(hash_table_t *tbl)

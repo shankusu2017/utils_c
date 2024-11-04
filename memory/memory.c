@@ -88,7 +88,9 @@ void util_free(void *ptr)
     void *realptr;
     size_t oldsize;
 
-    if (ptr == NULL) return;
+    if (ptr == NULL) {
+        return;
+    }
     realptr = (char*)ptr-sizeof(size_t);
     oldsize = *((size_t*)realptr);
     used_memory -= oldsize+sizeof(size_t);

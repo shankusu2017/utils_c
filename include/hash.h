@@ -13,12 +13,11 @@ extern "C" {
 #include "common.h"
 
 typedef struct mac_bytes_s {
-    unsigned char mac[6];
+    unsigned char bytes[MAC_LEN_BYTES];
 } __attribute__((packed)) mac_bytes_t;
 
 typedef enum hash_key_type_e {
-    hash_key_void = 0,          /* 自定义长度的  void * 类型 */
-
+    // hash_key_void = 0,          /* 自定义长度的  void * 类型 */
     hash_key_char = 100,
     hash_key_uchar,
     hash_key_int16,
@@ -27,8 +26,9 @@ typedef enum hash_key_type_e {
     hash_key_uint32,
     hash_key_int64,
     hash_key_uint64,
-    hash_key_pointer,
+    hash_key_pointer,   /* 指针 */
     hash_key_mac,
+    hash_key_mem = 200,       /* 一片内存 */
 } hash_key_type_t;
 
 typedef union hash_key_u {
@@ -41,24 +41,16 @@ typedef union hash_key_u {
     int64_t i64;
     uint64_t u64;
     void *ptr;
-    struct mac_bytes_s mac;
+    void *mem;  /* 通用类型 key */*/
+    mac_bytes_t mac;
 } hash_key_t;
 
-typedef struct hash_node_s {
-	struct hash_node_s *next;
-
-	void *val;
-
-    /* 各种常见类型的 KEY */
-    hash_key_t keys;
-    /* 通用类型 void key，必须放最后 */
-	char key_void[];
-} hash_node_t;
 
 typedef struct hash_table_s hash_table_t;
+typedef struct hash_node_s hash_node_t;
 typedef size_t (*hash_cal_handler)(void *addr, size_t len);
 
-extern hash_table_t *hash_create(int bucket_height, hash_key_type_t key_type, size_t key_void_len);
+extern hash_table_t *hash_create(int bucket_height, hash_key_type_t key_type, size_t key_mem_len);
 extern void hash_free(hash_table_t *tbl);
 
 /* void 的 key 会单独复制一份，其它类型的 key 进行值拷贝
