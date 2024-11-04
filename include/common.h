@@ -9,6 +9,7 @@
 #include <sys/epoll.h>
 #include <sys/select.h>
 #include <netinet/tcp.h>
+#include <linux/unistd.h>
 #endif
 
 #include <stdio.h>
@@ -25,7 +26,6 @@
 #include <sys/types.h>          /* See NOTES */
 #include <signal.h>
 #include <assert.h>
-#include <linux/unistd.h>
 #include <stdarg.h>
 
 

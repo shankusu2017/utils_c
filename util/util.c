@@ -32,8 +32,12 @@ uint32_t ip_str_to_value(const char *ip)
 		return 0;
 	}
 
+#ifndef _WIN32
     uint32_t ipv4_addr;
     inet_pton(AF_INET, ip, (void *) &ipv4_addr);
 
 	return ntohl(ipv4_addr);
+#else
+	return 0;
+#endif
 }

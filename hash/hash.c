@@ -69,7 +69,7 @@ static inline int hash_key_compare(hash_key_type_t key_type, size_t key_len, has
     case hash_key_mem:
         return memcmp(key_a.mem, key_b.mem, key_len);
     default:
-        printf("0x70e05102 key.type invalid %d", tbl->key_type);
+        printf("0x70e05102 key.type invalid %d", key_type);
         exit(-0x70e05102);
         break;
     }
@@ -117,7 +117,7 @@ static inline void hash_key_copy(hash_key_type_t key_type, size_t key_len, hash_
         memcpy(key_a->mem, key_b.mem, key_len);
         break;
     default:
-        printf("0x70e05102 key.type invalid %d", tbl->key_type);
+        printf("0x70e05102 key.type invalid %d", key_type);
         exit(-0x70e05102);
         break;
     }
@@ -151,33 +151,33 @@ static inline size_t cal_key_len(hash_table_t *tbl)
     }
 }
 
-static inline void *cal_key_addr2(hash_key_type_t key_type, hash_key_t key)
+static inline void *cal_key_addr(hash_key_type_t key_type, hash_key_t *key)
 {
     switch (key_type) {
     case hash_key_char:
-        return &key.keys.c;
+        return &key->c;
     case hash_key_uchar:
-        return &key.keys.uc;
+        return &key->uc;
     case hash_key_int16:
-        return &key.keys.i16;
+        return &key->i16;
     case hash_key_uint16:
-        return &key.keys.u16;
+        return &key->u16;
     case hash_key_int32:
-        return &key.keys.i32;
+        return &key->i32;
    case hash_key_uint32:
-        return &key.keys.u32;
+        return &key->u32;
     case hash_key_int64:
-        return &key.keys.i64;
+        return &key->i64;
     case hash_key_uint64:
-        return &key.keys.u64;
+        return &key->u64;
     case hash_key_pointer:
-        return &key.keys.ptr;
+        return &key->ptr;
     case hash_key_mac:
-        return &key.keys.mac;
+        return &key->mac;
     case hash_key_mem:
-        return key.keys.mem;    /* 直接返回指向的地址 */
+        return key->mem;    /* 直接返回指向的地址 */
     default:
-        printf("0x11c9cb57 key.type invalid %d", tbl->key_type);
+        printf("0x11c9cb57 key.type invalid %d", key_type);
         exit(-0x11c9cb57);
         break;
     }
@@ -252,7 +252,7 @@ void hash_free(hash_table_t *tbl)
 int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr(tbl->key_type, &key), key_len) % tbl->height;
     hash_node_t *node = tbl->nodes[h];
 
     /* 新值替换旧值 */
@@ -272,11 +272,11 @@ int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
 		return -0x6488e857;
 	}
     if (0 == tbl->mem_key_len) {
-        node->keys.mem == NULL
+        node->keys.mem == NULL;
     } else {
         node->keys.mem = node + 1;
     }
-	hash_key_copy(tbl->key_type, key_len, node->keys, key);
+	hash_key_copy(tbl->key_type, key_len, &node->keys, key);
 	node->val = val;    /* 值：浅赋值 */
 
 	/* 加到链表 */
@@ -291,7 +291,7 @@ int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
 hash_node_t *hash_find(hash_table_t *tbl, hash_key_t key)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr(tbl->key_type, &key), key_len) % tbl->height;
     hash_node_t *node = tbl->nodes[h];
 
     while (node) {
@@ -307,7 +307,7 @@ hash_node_t *hash_find(hash_table_t *tbl, hash_key_t key)
 int hash_delete(hash_table_t *tbl, hash_key_t key)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr(tbl->key_type, &key), key_len) % tbl->height;
 	hash_node_t *(*pre) = &tbl->nodes[h];
 	hash_node_t *node = tbl->nodes[h];
 
@@ -343,7 +343,7 @@ void *hash_update(hash_table_t *tbl, hash_key_t key, void *val)
 static hash_node_t *hash_next_node(hash_table_t *tbl, hash_key_t key)
 {
     size_t key_len = cal_key_len(tbl);
-	size_t h = tbl->hash_cal_fun(cal_key_addr2(tbl->key_type, key), key_len) % tbl->height;
+	size_t h = tbl->hash_cal_fun(cal_key_addr(tbl->key_type, &key), key_len) % tbl->height;
     hash_node_t *node = tbl->nodes[h];
     while (node) {
         if (0 == hash_key_compare(tbl->key_type, key_len, node->keys, key)) {
@@ -394,7 +394,12 @@ hash_node_t *hash_next(hash_table_t *tbl, hash_key_t *key)
 
 void *hash_key_addr(hash_table_t *tbl, hash_node_t *node)
 {
-    return node->keys;
+    return &node->keys;
+}
+
+void *hash_node_val(hash_node_t *node)
+{
+    return node->val;
 }
 
 size_t hash_node_ttl(hash_table_t *tbl)

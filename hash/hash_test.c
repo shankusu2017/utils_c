@@ -10,12 +10,16 @@ int test_table_void(void)
 {
     printf("0x5b1ccf5a test void hash\n");
 
-    hash_table_t *tbl = hash_create(1024*64, hash_key_void, sizeof(int));
-    const size_t large_size = 1024*2048;
+    const size_t large_size = 1024*32;
+    hash_table_t *tbl = hash_create(large_size*2, hash_key_mem, sizeof(int));
+
+    printf("mem.size:%u\n", util_malloc_used_memory());
 
     {
-        /* same key */
-        int key = 1;
+        /* same key, diff val */
+        hash_key_t key;
+        int key_val = 1;
+        key.mem = &key_val;
         int *val = NULL;
         for (int i = 0; i < large_size; ++i) {
             val = (int *)util_malloc(sizeof(int));
@@ -24,38 +28,45 @@ int test_table_void(void)
                 exit(-1);
             } else {
                 *val = i;
-                hash_insert(tbl, &key, val);
+                hash_insert(tbl, key, val);
                 assert(hash_node_ttl(tbl) == 1);
             }
         }
+        printf("mem.size:%u\n", util_malloc_used_memory());
         assert(hash_node_ttl(tbl) == 1);
-        hash_delete(tbl,  &key);
+        hash_delete(tbl, key);
         assert(hash_node_ttl(tbl) == 0);
     }
 
 
     {   /* unique key */
-        int key = 0;
-        int *val = NULL;
+        hash_key_t key;
+        int *val = NULL, key_val = 0;
         for (int i = 0; i < large_size; ++i) {
             val = (int *)util_malloc(sizeof(int));
+            key_val = i;
             if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
             } else {
-                key = *val = i;
-                hash_insert(tbl, &key, val);
+                *val = i;
+                key.mem = &key_val;
+                hash_insert(tbl, key, val);
                 assert(hash_node_ttl(tbl) == i+1);
             }
         }
+        printf("mem.size:%u\n", util_malloc_used_memory());
     }
 
-     {   /* look */
-        int *val = NULL;
+    {   /* look */
+        int key_val = 0;
+        hash_key_t key;
+        key.mem = &key_val;
         for (int i = 0; i < large_size; ++i) {
-            hash_node_t *node = hash_find(tbl, &i);
+            key_val = i;
+            hash_node_t *node = hash_find(tbl, key);
             assert(node != NULL);
-            assert(i == *((int *)node->val));
+            assert(i == *((int *)hash_node_val(node)));
         }
     }
 
@@ -81,7 +92,7 @@ int test_table_void(void)
         hash_node_t *next = NULL;
         while (item) {
             next = hash_next(tbl, hash_key_addr(tbl, item));
-            hash_delete(tbl, hash_key_addr(tbl, item));
+            hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
             item = next;
             assert(hash_node_ttl(tbl) == --ttl);
         }
@@ -101,8 +112,8 @@ int test_table_keys(void)
 {
     printf("0x7efbb6ff ================> table.keys test start\n");
 
-    size_t node_ttl = 1024*4096;
-    hash_table_t *tbl = hash_create(node_ttl, hash_key_uint32, 0);
+    size_t node_ttl = 1024*16;
+    hash_table_t *tbl = hash_create(node_ttl/2, hash_key_uint32, 0);
     assert(tbl != NULL);
 
     // test insert
@@ -110,7 +121,7 @@ int test_table_keys(void)
         hash_key_t key;
         key.u32 = i;
         if (i % 4) {
-            int ret = hash_insert(tbl, &key.u32, NULL);
+            int ret = hash_insert(tbl, key, NULL);
             assert(ret == 0);
         }
     }
@@ -120,11 +131,36 @@ int test_table_keys(void)
     hash_node_t *next = NULL;
     while (item) {
         next = hash_next(tbl, hash_key_addr(tbl, item));
-        hash_delete(tbl, hash_key_addr(tbl, item));
+        hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
         item = next;
         assert(hash_node_ttl(tbl) == --ttl);
     }
     assert(hash_node_ttl(tbl) == 0);
+
+    {   /* unique key 
+         * insert AND find 
+         */
+        hash_key_t key;
+        int *val = NULL;
+        for (int i = 0; i < node_ttl; ++i) {
+            val = (int *)util_malloc(sizeof(int));
+            if (NULL == val) {
+                printf("oom\n");
+                exit(-1);
+            } else {
+                key.i32 = *val = i;
+                hash_insert(tbl, key, val);
+                assert(hash_node_ttl(tbl) == i+1);
+            }
+        }
+        for (int i = 0; i < node_ttl; ++i) {
+            key.i32 = i;
+            hash_node_t *node = hash_find(tbl, key);
+            assert(node != NULL);
+            assert(i == *((int *)hash_node_val(node)));
+        }
+    }
+
 
     /* test memory */
     hash_free(tbl);
