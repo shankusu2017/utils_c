@@ -172,6 +172,113 @@ int test_table_keys(void)
 }
 
 static
+int test_table_key_int16(void)
+{
+    printf("0x7efbb6ff <================ table.key.int16 test start\n");
+
+    size_t larget_ttl = (1<<16)*8;
+    hash_table_t *tbl = hash_create(larget_ttl*2, hash_key_int16, 0);
+    assert(tbl != NULL);
+
+    size_t node_ttl = (1<<16) - 1;  /* key 溢出，正好测试 key 覆盖的情况 */
+    // test insert and find
+    {   int ttl = 0;
+        for (size_t i = 0; i < larget_ttl; ++i) {
+            hash_key_t key;
+            key.i16 = i;
+            ttl++;
+            int ret = hash_insert(tbl, key, NULL);
+            assert(ret == 0);
+        }
+        assert(node_ttl == hash_node_ttl(tbl));
+        for (size_t i = 0; i < larget_ttl; ++i) {
+            hash_key_t key;
+            key.i16 = i;
+            hash_node_t *node = hash_find(tbl, key);
+            assert(NULL != node);
+            void *val = hash_node_val(node);
+            assert(NULL == val);
+        }
+    }
+
+    {
+        // next
+        size_t ttl = hash_node_ttl(tbl);
+        assert(node_ttl == ttl);
+        hash_node_t *item = hash_next(tbl, NULL);
+        hash_node_t *next = NULL;
+        size_t times = 0;
+        while (item) {
+            next = hash_next(tbl, hash_key_addr(tbl, item));
+            // hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            item = next;
+            times++;
+            // assert(hash_node_ttl(tbl) == --ttl);
+        }
+        assert(times == ttl);
+    }
+
+    {
+        // delete
+        size_t ttl = hash_node_ttl(tbl);
+        assert(node_ttl == ttl);
+        hash_node_t *item = hash_next(tbl, NULL);
+        hash_node_t *next = NULL;
+        size_t times = 0;
+        while (item) {
+            next = hash_next(tbl, hash_key_addr(tbl, item));
+            hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            item = next;
+            times++;
+            // assert(hash_node_ttl(tbl) == --ttl);
+        }
+        assert(times == ttl);
+        assert(hash_node_ttl(tbl) == 0);
+
+        for (size_t i = 0; i < larget_ttl; ++i) {
+            hash_key_t key;
+            key.i16 = i;
+            hash_node_t *node = hash_find(tbl, key);
+            assert(NULL == node);
+        }
+    }
+
+    {   /* unique key and val
+         * insert AND find
+         */
+        assert(hash_node_ttl(tbl) == 0);
+        hash_key_t key;
+        int *val = NULL;
+        for (int i = 0; i < larget_ttl; ++i) {
+            val = (int *)util_malloc(sizeof(int));
+            if (NULL == val) {
+                printf("oom\n");
+                exit(-1);
+            } else {
+                key.i16 = *val = i;
+                hash_insert(tbl, key, val);
+                assert(hash_node_ttl(tbl) == i+1);
+            }
+        }
+        for (int i = 0; i < larget_ttl; ++i) {
+            key.i16 = i;
+            hash_node_t *node = hash_find(tbl, key);
+            assert(node != NULL);
+            assert(i == *((int *)hash_node_val(node)));
+        }
+    }
+
+
+    /* test memory */
+    hash_free(tbl);
+    assert(0== util_malloc_used_memory());
+
+    printf("0x0e6b0583 ================> table.key.int64 test done\n");
+    return 0;
+}
+
+
+static
 int test_table_key_int64(void)
 {
     printf("0x7efbb6ff <================ table.key.int64 test start\n");
@@ -402,6 +509,7 @@ int main(int argc, char *argv[])
 {
     int ret = (test_table_void()
         || test_table_keys()
+        || test_table_key_int16()
         || test_table_key_int64()
         || test_table_key_pointer());
     assert(ret == 0);
