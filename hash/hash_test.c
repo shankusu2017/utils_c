@@ -13,7 +13,7 @@ int test_table_void(void)
     const size_t large_size = 1024*32;
     hash_table_t *tbl = hash_create(large_size*2, hash_key_mem, sizeof(int));
 
-    printf("mem.size:%u\n", util_malloc_used_memory());
+    printf("mem.size:%u\n", hash_test_mem_used());
 
     {
         /* same key, diff val */
@@ -22,7 +22,7 @@ int test_table_void(void)
         key.mem = &key_val;
         int *val = NULL;
         for (int i = 0; i < large_size; ++i) {
-            val = (int *)util_malloc(sizeof(int));
+            val = (int *)hash_test_mem_malloc(sizeof(int));
             if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
@@ -32,7 +32,7 @@ int test_table_void(void)
                 assert(hash_node_ttl(tbl) == 1);
             }
         }
-        printf("mem.size:%u\n", util_malloc_used_memory());
+        printf("mem.size:%u\n", hash_test_mem_used());
         assert(hash_node_ttl(tbl) == 1);
         hash_delete(tbl, key);
         assert(hash_node_ttl(tbl) == 0);
@@ -43,7 +43,7 @@ int test_table_void(void)
         hash_key_t key;
         int *val = NULL, key_val = 0;
         for (int i = 0; i < large_size; ++i) {
-            val = (int *)util_malloc(sizeof(int));
+            val = (int *)hash_test_mem_malloc(sizeof(int));
             key_val = i;
             if (NULL == val) {
                 printf("oom\n");
@@ -55,7 +55,7 @@ int test_table_void(void)
                 assert(hash_node_ttl(tbl) == i+1);
             }
         }
-        printf("mem.size:%u\n", util_malloc_used_memory());
+        printf("mem.size:%u\n", hash_test_mem_used());
     }
 
     {   /* look */
@@ -102,7 +102,7 @@ int test_table_void(void)
 
     /* test memory */
     hash_free(tbl);
-    assert(0== util_malloc_used_memory());
+    assert(0== hash_test_mem_used());
 
     printf("0x3fe98825 <======== void hash table test done\n");
     return 0;
@@ -144,7 +144,7 @@ int test_table_keys(void)
         hash_key_t key;
         int *val = NULL;
         for (int i = 0; i < node_ttl; ++i) {
-            val = (int *)util_malloc(sizeof(int));
+            val = (int *)hash_test_mem_malloc(sizeof(int));
             if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
@@ -165,7 +165,7 @@ int test_table_keys(void)
 
     /* test memory */
     hash_free(tbl);
-    assert(0== util_malloc_used_memory());
+    assert(0== hash_test_mem_used());
 
     printf("0x0e6b0583 <================ table.keys test done\n");
     return 0;
@@ -180,7 +180,7 @@ int test_table_key_int16(void)
     hash_table_t *tbl = hash_create(larget_ttl*2, hash_key_int16, 0);
     assert(tbl != NULL);
 
-    size_t node_ttl = (1<<16) - 1;  /* key 溢出，正好测试 key 覆盖的情况 */
+    size_t node_ttl = (1<<16);  /* key 溢出，正好测试 key 覆盖的情况 */
     // test insert and find
     {   int ttl = 0;
         for (size_t i = 0; i < larget_ttl; ++i) {
@@ -249,18 +249,22 @@ int test_table_key_int16(void)
         assert(hash_node_ttl(tbl) == 0);
         hash_key_t key;
         int *val = NULL;
-        for (int i = 0; i < larget_ttl; ++i) {
-            val = (int *)util_malloc(sizeof(int));
+        for (int i = 0; i < (1<<16); ++i) {
+            val = (int *)hash_test_mem_malloc(sizeof(int));
             if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
             } else {
                 key.i16 = *val = i;
                 hash_insert(tbl, key, val);
-                assert(hash_node_ttl(tbl) == i+1);
+                if ((i+1) < (1<<16)) {
+                    assert(hash_node_ttl(tbl) == i + 1);
+                } else {
+                    assert(hash_node_ttl(tbl) == 1 << 16);
+                }
             }
         }
-        for (int i = 0; i < larget_ttl; ++i) {
+        for (int i = 0; i < (1<<16); ++i) {
             key.i16 = i;
             hash_node_t *node = hash_find(tbl, key);
             assert(node != NULL);
@@ -271,7 +275,7 @@ int test_table_key_int16(void)
 
     /* test memory */
     hash_free(tbl);
-    assert(0== util_malloc_used_memory());
+    assert(0== hash_test_mem_used());
 
     printf("0x0e6b0583 ================> table.key.int64 test done\n");
     return 0;
@@ -365,7 +369,7 @@ int test_table_key_int64(void)
         hash_key_t key;
         int *val = NULL;
         for (int i = 0; i < larget_ttl; ++i) {
-            val = (int *)util_malloc(sizeof(int));
+            val = (int *)hash_test_mem_malloc(sizeof(int));
             if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
@@ -386,7 +390,7 @@ int test_table_key_int64(void)
 
     /* test memory */
     hash_free(tbl);
-    assert(0== util_malloc_used_memory());
+    assert(0== hash_test_mem_used());
 
     printf("0x0e6b0583 ================> table.key.int64 test done\n");
     return 0;
@@ -477,7 +481,7 @@ int test_table_key_pointer(void)
         hash_key_t key;
         int *val = NULL;
         for (int64_t i = 0; i < larget_ttl; ++i) {
-            val = (int *)util_malloc(sizeof(int));
+            val = (int *)hash_test_mem_malloc(sizeof(int));
             if (NULL == val) {
                 printf("oom\n");
                 exit(-1);
@@ -499,7 +503,7 @@ int test_table_key_pointer(void)
 
     /* test memory */
     hash_free(tbl);
-    assert(0== util_malloc_used_memory());
+    assert(0== hash_test_mem_used());
 
     printf("0x0e6b0583 ================> table.key.ptr test done\n");
     return 0;

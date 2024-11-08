@@ -92,7 +92,8 @@ extern size_t hash_node_ttl(hash_table_t *tbl);
 extern void hash_set_cal_hash_handler(hash_table_t *tbl, hash_cal_handler handler);
 
 
-extern size_t hash_mem_used_memory(void);
+extern size_t hash_test_mem_used(void);
+extern void *hash_test_mem_malloc(size_t sz);
 
 #ifdef __cplusplus
 }

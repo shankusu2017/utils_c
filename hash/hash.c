@@ -1,4 +1,3 @@
-#include "crc.h"
 #include "hash.h"
 
 #define ERR_OK 0
@@ -35,6 +34,9 @@ static inline void hash_mem_free(void *ptr);
 size_t hash_mem_used_memory(void);
 static size_t used_memory = 0;
 
+/* 开启内测测试 */
+#define HASH_MEM_TEST_0X21E7477F 1
+
 /* 申请内存, 自带size.head
  * mem: size.head + free.mem */
 static inline void *hash_mem_malloc(size_t size)
@@ -59,12 +61,12 @@ static inline void *hash_mem_malloc(size_t size)
 static inline void *hash_mem_calloc(size_t size)
 {
 #ifndef HASH_MEM_TEST_0X21E7477F
-    return calloc(size);
+    return calloc(1, size);
 #endif
 
     /* The  malloc()  function  allocates  size bytes and returns a pointer to the allocated memory.  
 	 * The memory is not initialized */
-    void *ptr = calloc(1, size+sizeof(size_t));
+    void *ptr = calloc(1, size + sizeof(size_t));
 
     if (!ptr) {
         return NULL;
@@ -123,9 +125,14 @@ static inline void hash_mem_free(void *ptr)
 }
 
 /* 返回已消耗的内存总量 */
-size_t hash_mem_used_memory(void)
+extern size_t hash_test_mem_used(void)
 {
     return used_memory;
+}
+
+extern void *hash_test_mem_malloc(size_t sz)
+{
+    return hash_mem_malloc(sz);
 }
 
 static const uint64_t hash_crc64_tab[256] = {
@@ -259,8 +266,9 @@ static const uint64_t hash_crc64_tab[256] = {
     UINT64_C(0x536fa08fdfd90e51), UINT64_C(0x29b7d047efec8728),
 };
 
-uint64_t hash_crc64(uint64_t crc, const unsigned char *s, uint64_t l) {
-    uint64_t j;
+uint64_t hash_crc64(uint64_t crc, const unsigned char *s, uint64_t l)
+{
+    uint64_t j = 0;
 
     for (j = 0; j < l; j++) {
         uint8_t byte = s[j];
@@ -495,7 +503,7 @@ void hash_free(hash_table_t *tbl)
 	if (tbl->node_ttl != 0) {
 		printf("0x0cb7eb49 free tbl error ttl: %ld", tbl->node_ttl);
 	}
-	hash_mem__free(tbl);
+	hash_mem_free(tbl);
 }
 
 
@@ -508,7 +516,7 @@ int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
     /* 新值替换旧值 */
     while (node) {
         if (0 == hash_key_compare(tbl->key_type, key_len, node->keys, key)) {
-			hash_mem__free(node->val);
+			hash_mem_free(node->val);
             node->val = val;
             return ERR_OK;
         }
