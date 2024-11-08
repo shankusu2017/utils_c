@@ -91,6 +91,9 @@ extern size_t hash_node_ttl(hash_table_t *tbl);
 /* 设置独立的 tbl hash 计算函数 */
 extern void hash_set_cal_hash_handler(hash_table_t *tbl, hash_cal_handler handler);
 
+
+extern size_t hash_mem_used_memory(void);
+
 #ifdef __cplusplus
 }
 #endif
