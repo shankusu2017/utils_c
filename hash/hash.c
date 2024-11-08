@@ -489,6 +489,10 @@ void hash_free(hash_table_t *tbl)
 {
 	size_t h = 0;
 
+    if (NULL == tbl) {
+        return;
+    }
+
 	for (h = 0; h < tbl->height; ++h) {
 		hash_node_t *node = tbl->nodes[h];
 		while (node) {
@@ -530,7 +534,7 @@ int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
 		return -0x6488e857;
 	}
     if (0 == tbl->mem_key_len) {
-        node->keys.mem == NULL;
+        node->keys.mem = NULL;
     } else {
         node->keys.mem = node + 1;
     }
@@ -619,8 +623,7 @@ static hash_node_t *hash_next_node(hash_table_t *tbl, hash_key_t key)
 	}
 
 	/* 从下一链开始 */
-	int i = 0;
-	for (i = h + 1; i < tbl->height; ++i) {
+	for (size_t i = h + 1; i < tbl->height; ++i) {
 	    node = tbl->nodes[i];
 		if (node) {
 			return node;
@@ -639,8 +642,7 @@ hash_node_t *hash_next(hash_table_t *tbl, hash_key_t *key)
 		return hash_next_node(tbl, *key);
 	}
 
-	int i = 0;
-	for (i = 0; i < tbl->height; ++i) {
+	for (size_t i = 0; i < tbl->height; ++i) {
 	    hash_node_t *node = tbl->nodes[i];
 		if (node) {
 			return node;
@@ -650,7 +652,7 @@ hash_node_t *hash_next(hash_table_t *tbl, hash_key_t *key)
 	return NULL;
 }
 
-void *hash_key_addr(hash_table_t *tbl, hash_node_t *node)
+void *hash_key_addr(hash_node_t *node)
 {
     return &node->keys;
 }

@@ -12,6 +12,10 @@ extern "C" {
 
 #include "common.h"
 
+#ifndef MAC_LEN_BYTES
+#define MAC_LEN_BYTES (6)
+#endif
+
 typedef struct mac_bytes_s {
     unsigned char bytes[MAC_LEN_BYTES];
 } __attribute__((packed)) mac_bytes_t;
@@ -62,8 +66,8 @@ extern int hash_insert(hash_table_t *tbl, hash_key_t key, void *val);
  *   hash_node_t *item = hash_next(tbl, NULL);
  *   hash_node_t *next = NULL;
  *   while (item) {
- *       next = hash_next(tbl, hash_key_addr(tbl, item));
- *       hash_delete(tbl, hash_key_addr(tbl, item));
+ *       next = hash_next(tbl, hash_key_addr(item));
+ *       hash_delete(tbl, hash_key_addr(item));
  *       item = next;
  *   }
 */
@@ -82,7 +86,7 @@ extern hash_node_t *hash_next(hash_table_t *tbl, hash_key_t *key);
  */
 extern void *hash_update(hash_table_t *tbl, hash_key_t key, void *val);
 
-extern void *hash_key_addr(hash_table_t *tbl, hash_node_t *node);
+extern void *hash_key_addr(hash_node_t *node);
 
 extern void *hash_node_val(hash_node_t *node);
 
