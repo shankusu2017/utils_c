@@ -27,6 +27,8 @@ struct hash_node_s {
      ********************************/
 };
 
+/* 开启内测测试 */
+#define HASH_MEM_TEST_0X21E7477F 1
 static inline void *hash_mem_malloc(size_t size);
 static inline void *hash_mem_calloc(size_t size);
 static inline void *hash_mem_realloc(void *ptr, size_t size);
@@ -34,8 +36,10 @@ static inline void hash_mem_free(void *ptr);
 size_t hash_mem_used_memory(void);
 static size_t used_memory = 0;
 
-/* 开启内测测试 */
-#define HASH_MEM_TEST_0X21E7477F 1
+#ifndef LOG_ERROR
+#define LOG_ERROR printf
+#endif
+
 
 /* 申请内存, 自带size.head
  * mem: size.head + free.mem */
@@ -281,7 +285,7 @@ uint64_t hash_crc64(uint64_t crc, const unsigned char *s, uint64_t l)
 #ifdef TEST_MAIN
 #include <stdio.h>
 int main(void) {
-    printf("e9c6d914c4b8d9ca == %016llx\n",
+    LOG_ERROR("e9c6d914c4b8d9ca == %016llx\n",
         (unsigned long long) crc64(0,(unsigned char*)"123456789",9));
     return 0;
 }
@@ -328,7 +332,7 @@ static inline int hash_key_compare(hash_key_type_t key_type, size_t key_len, has
     case hash_key_mem:
         return memcmp(key_a.mem, key_b.mem, key_len);
     default:
-        printf("0x70e05102 key.type invalid %d", key_type);
+        LOG_ERROR("0x70e05102 key.type invalid %d", key_type);
         exit(-0x70e05102);
         break;
     }
@@ -376,7 +380,7 @@ static inline void hash_key_copy(hash_key_type_t key_type, size_t key_len, hash_
         memcpy(key_a->mem, key_b.mem, key_len);
         break;
     default:
-        printf("0x70e05102 key.type invalid %d", key_type);
+        LOG_ERROR("0x70e05102 key.type invalid %d", key_type);
         exit(-0x70e05102);
         break;
     }
@@ -404,7 +408,7 @@ static inline size_t cal_key_len(hash_table_t *tbl)
     case hash_key_mem:
         return tbl->mem_key_len;
     default:
-        printf("0x70e05102 key.type invalid %d", tbl->key_type);
+        LOG_ERROR("0x70e05102 key.type invalid %d", tbl->key_type);
         exit(-0x70e05102);
         break;
     }
@@ -436,7 +440,7 @@ static inline void *cal_key_addr(hash_key_type_t key_type, hash_key_t *key)
     case hash_key_mem:
         return key->mem;    /* 直接返回指向的地址 */
     default:
-        printf("0x11c9cb57 key.type invalid %d", key_type);
+        LOG_ERROR("0x11c9cb57 key.type invalid %d", key_type);
         exit(-0x11c9cb57);
         break;
     }
@@ -455,12 +459,12 @@ static inline void hash_free_node(hash_node_t *node)
 static hash_table_t *hash_create_do(size_t height, hash_key_type_t key_type, size_t mem_key_len)
 {
 	if (height == 0) {
-		printf("0x2f670a85 args valid(%ld:%d:%ld) for hash_create!", height, (int)key_type, mem_key_len);
+		LOG_ERROR("0x2f670a85 args valid(%ld:%d:%ld) for hash_create!", height, (int)key_type, mem_key_len);
 		return NULL;
 	}
 	hash_table_t *tbl = hash_mem_calloc(sizeof(struct hash_table_s) + sizeof(struct hash_node_s*) * height);
 	if (NULL == tbl) {
-		printf("0x3f98e3c9 calloc mem fail for hash_create!");
+		LOG_ERROR("0x3f98e3c9 calloc mem fail for hash_create!");
 		return NULL;
 	}
 
@@ -505,7 +509,7 @@ void hash_free(hash_table_t *tbl)
 	}
 	/* 数组和表一起释放了，下面无需单独释放 */
 	if (tbl->node_ttl != 0) {
-		printf("0x0cb7eb49 free tbl error ttl: %ld", tbl->node_ttl);
+		LOG_ERROR("0x0cb7eb49 free tbl error ttl: %ld", tbl->node_ttl);
 	}
 	hash_mem_free(tbl);
 }
@@ -530,7 +534,7 @@ int hash_insert(hash_table_t *tbl, hash_key_t key, void *val)
 	/* 插入全新值 */
 	node = (hash_node_t *)hash_mem_malloc(sizeof(hash_node_t) + tbl->mem_key_len);
 	if (NULL == node) {
-		printf("0x6488e857 calloc fail for hash_insert!");
+		LOG_ERROR("0x6488e857 calloc fail for hash_insert!");
 		return -0x6488e857;
 	}
     if (0 == tbl->mem_key_len) {
@@ -585,7 +589,7 @@ int hash_delete(hash_table_t *tbl, hash_key_t key)
 	    }
 	}
 
-	printf("0x2f62c919 hash_delete fail, can't find node!\n");
+	LOG_ERROR("0x2f62c919 hash_delete fail, can't find node!\n");
 	return -1;
 }
 
@@ -618,7 +622,7 @@ static hash_node_t *hash_next_node(hash_table_t *tbl, hash_key_t key)
         node = node->next;
     }
 	if (node == NULL) {	/* 传入的 key 非法 */
-		printf("0x1b8539ae key invalid\n");
+		LOG_ERROR("0x1b8539ae key invalid\n");
 		return NULL;
 	}
 
@@ -648,7 +652,7 @@ hash_node_t *hash_next(hash_table_t *tbl, hash_key_t *key)
 			return node;
 		}
 	}
-	printf("0x1f9b7a22 table is nil");
+	LOG_ERROR("0x1f9b7a22 table is nil");
 	return NULL;
 }
 
