@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread>
 #include "hash.h"
 #include "memory.h"
 #include "common.h"
@@ -10,7 +11,7 @@ int test_table_void(void)
 {
     printf("0x5b1ccf5a test void hash\n");
 
-    const size_t large_size = 1024*32;
+    const size_t large_size = 1024*64;
     hash_table_t *tbl = hash_create(large_size*2, hash_key_mem, sizeof(int));
 
     printf("mem.size:%u\n", hash_test_mem_used());
@@ -76,12 +77,14 @@ int test_table_void(void)
     hash_node_t *item = hash_next(tbl, NULL);
     hash_node_t *next = NULL;
     while (item) {
-        next = hash_next(tbl, hash_key_addr(tbl, item));
+        pthread_rwlock_rdlock(&f_rdlock_usr_id);
+        pthread_rwlock_unlock(&f_rdlock_usr_id);
+        next = hash_next(tbl, hash_key_addr(item));
         item = next;
         ttl--;
     }
     assert(ttl == 0);
-    printf("0x70b354d1 loop done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
+    printf("0x70b354d1 with rwlock loop done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
 
 
     /* 测试 delete */
@@ -91,8 +94,8 @@ int test_table_void(void)
         hash_node_t *item = hash_next(tbl, NULL);
         hash_node_t *next = NULL;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
-            hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
+            hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
             item = next;
             assert(hash_node_ttl(tbl) == --ttl);
         }
@@ -131,8 +134,8 @@ int test_table_keys(void)
     hash_node_t *item = hash_next(tbl, NULL);
     hash_node_t *next = NULL;
     while (item) {
-        next = hash_next(tbl, hash_key_addr(tbl, item));
-        hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+        next = hash_next(tbl, hash_key_addr(item));
+        hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
         item = next;
         assert(hash_node_ttl(tbl) == --ttl);
     }
@@ -209,8 +212,8 @@ int test_table_key_int16(void)
         hash_node_t *next = NULL;
         size_t times = 0;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
-            // hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
+            // hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
             item = next;
             times++;
             // assert(hash_node_ttl(tbl) == --ttl);
@@ -226,8 +229,8 @@ int test_table_key_int16(void)
         hash_node_t *next = NULL;
         size_t times = 0;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
-            hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
+            hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
             item = next;
             times++;
             // assert(hash_node_ttl(tbl) == --ttl);
@@ -328,8 +331,8 @@ int test_table_key_int64(void)
         hash_node_t *next = NULL;
         size_t times = 0;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
-            // hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
+            // hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
             item = next;
             times++;
             // assert(hash_node_ttl(tbl) == --ttl);
@@ -345,8 +348,8 @@ int test_table_key_int64(void)
         hash_node_t *next = NULL;
         size_t times = 0;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
-            hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
+            hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
             item = next;
             times++;
             // assert(hash_node_ttl(tbl) == --ttl);
@@ -443,7 +446,7 @@ int test_table_key_pointer(void)
         hash_node_t *next = NULL;
         size_t times = 0;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
             item = next;
             times++;
         }
@@ -458,8 +461,8 @@ int test_table_key_pointer(void)
         hash_node_t *next = NULL;
         size_t times = 0;
         while (item) {
-            next = hash_next(tbl, hash_key_addr(tbl, item));
-            hash_delete(tbl, *(hash_key_t *)hash_key_addr(tbl, item));
+            next = hash_next(tbl, hash_key_addr(item));
+            hash_delete(tbl, *(hash_key_t *)hash_key_addr(item));
             item = next;
             times++;
         }

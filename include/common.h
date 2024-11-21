@@ -30,16 +30,32 @@
 #include <stdint.h>
 
 
-
-
+#ifndef MAC_LEN_BYTES
 #define MAC_LEN_BYTES (6)
-#define MAC_LEN_STR (17)
-/* "ff:ee:dd:cc:bb:aa" 包含尾部的\0 在内*/
-#define MAC_LEN_STR_00 (MAC_LEN_STR+1)
+#endif
 
-/* 192.168.251.165 */
-#define IPV4_LEN_STR 15
-#define IPV4_LEN_STR_00 (IPV4_LEN_STR+1)
+#ifndef MAC_LEN_STR_00
+#define MAC_LEN_STR_00 (18)
+#endif
+
+
+#ifndef IPV4_LEN_STR_00
+#define IPV4_LEN_STR_00 (16)
+#endif
+
+#ifndef ID_CHAR_32_STR_00
+#define ID_CHAR_32_STR_00  (33)
+#endif
+
+#ifndef ID_CHAR_64_STR_00
+/* 86c14d9ebf144b84b06abf0f73cc82a686c14d9ebf144b84b06abf0f73cc82a6 */
+#define ID_CHAR_64_STR_00  (65)
+#endif
+
+#ifndef HASH_NAME_LEN_00
+#define HASH_NAME_LEN_00 (257)
+#endif
+
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE( ARRAY ) (sizeof (ARRAY) / sizeof (ARRAY[0]))

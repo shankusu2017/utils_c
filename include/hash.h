@@ -10,11 +10,43 @@
 extern "C" {
 #endif
 
-#include "common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h> // bzero()
+#include <unistd.h> // read(), write(), close()
+#include <stdint.h>
+#include <errno.h>
+#include <sys/types.h>          /* See NOTES */
+#include <stdint.h>
+
 
 #ifndef MAC_LEN_BYTES
 #define MAC_LEN_BYTES (6)
 #endif
+
+#ifndef MAC_LEN_STR_00
+#define MAC_LEN_STR_00 (18)
+#endif
+
+
+#ifndef IPV4_LEN_STR_00
+#define IPV4_LEN_STR_00 (16)
+#endif
+
+#ifndef ID_CHAR_32_STR_00
+#define ID_CHAR_32_STR_00  (33)
+#endif
+
+#ifndef ID_CHAR_64_STR_00
+/* 86c14d9ebf144b84b06abf0f73cc82a686c14d9ebf144b84b06abf0f73cc82a6 */
+#define ID_CHAR_64_STR_00  (65)
+#endif
+
+#ifndef HASH_NAME_LEN_00
+#define HASH_NAME_LEN_00 (257)
+#endif
+
 
 typedef struct mac_bytes_s {
     unsigned char bytes[MAC_LEN_BYTES];
@@ -31,7 +63,11 @@ typedef enum hash_key_type_e {
     hash_key_int64,
     hash_key_uint64,
     hash_key_pointer,   /* 指针 */
-    hash_key_mac,
+    hash_key_mac,       /* 6 Byte 的 MAC */
+    hash_key_mac_str,   /* "D8-F2-CA-56-6F-7B" */
+    hash_key_ip_str,    /* "192.168.123.213" */
+    hash_key_id_char32_str, /* 86c14d9ebf144b84b06abf0f73cc82a6 */
+    hash_key_id_char64_str, /* 3dc5a14de0befc15f58947f8fcad708a19d6b4600cc681d69e4b57fce7e9e45f */
     hash_key_mem = 200,       /* 一片内存 */
 } hash_key_type_t;
 
@@ -44,9 +80,13 @@ typedef union hash_key_u {
     uint32_t u32;
     int64_t i64;
     uint64_t u64;
+    mac_bytes_t mac;
+    char mac_str[MAC_LEN_STR_00];
+    char ip_str[IPV4_LEN_STR_00];
+    char id_char32_str[ID_CHAR_32_STR_00];
+    char id_char64_str[ID_CHAR_64_STR_00];
     void *ptr;
     void *mem;  /* 通用类型 key */
-    mac_bytes_t mac;
 } hash_key_t;
 
 
@@ -55,7 +95,10 @@ typedef struct hash_node_s hash_node_t;
 typedef size_t (*hash_cal_handler)(void *addr, size_t len);
 
 extern hash_table_t *hash_create(int bucket_height, hash_key_type_t key_type, size_t key_mem_len);
+/* 删除整个表，包含表自身 */
 extern void hash_free(hash_table_t *tbl);
+/* 释放表内所有元素，保留表结构 */
+extern int hash_reset(hash_table_t *tbl);
 
 /* void 的 key 会单独复制一份，其它类型的 key 进行值拷贝
  * val 会被值拷贝，释放 tbl 时会被一起释放
@@ -94,6 +137,8 @@ extern void *hash_node_val(hash_node_t *node);
 extern size_t hash_node_ttl(hash_table_t *tbl);
 /* 设置独立的 tbl hash 计算函数 */
 extern void hash_set_cal_hash_handler(hash_table_t *tbl, hash_cal_handler handler);
+
+extern void hash_set_name(hash_table_t *tbl, const char *name);
 
 
 extern size_t hash_test_mem_used(void);
