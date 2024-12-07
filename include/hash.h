@@ -100,7 +100,7 @@ extern void hash_free(hash_table_t *tbl);
 /* 释放表内所有元素，保留表结构 */
 extern int hash_reset(hash_table_t *tbl);
 
-/* void 的 key 会单独复制一份，其它类型的 key 进行值拷贝
+/* void *的 key 会单独复制一份，其它类型的 key 进行值拷贝
  * val 会被值拷贝，释放 tbl 时会被一起释放
  */
 extern int hash_insert(hash_table_t *tbl, hash_key_t key, void *val);
@@ -140,9 +140,12 @@ extern void hash_set_cal_hash_handler(hash_table_t *tbl, hash_cal_handler handle
 
 extern void hash_set_name(hash_table_t *tbl, const char *name);
 
-
+extern void hash_test_print_table(hash_table_t *tbl, void fun(void *node, char *node_str, size_t node_str_len));
 extern size_t hash_test_mem_used(void);
 extern void *hash_test_mem_malloc(size_t sz);
+
+extern hash_node_t *hash_test_random_node(hash_table_t *tbl, size_t rdm_idx);
+
 
 #ifdef __cplusplus
 }

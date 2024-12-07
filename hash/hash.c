@@ -495,6 +495,64 @@ static inline void *cal_key_addr(hash_key_type_t key_type, hash_key_t *key)
     }
 }
 
+static inline void print_key(hash_key_type_t key_type, hash_key_t *key, char *buf, size_t buf_len)
+{
+	switch (key_type) {
+	case hash_key_char:
+	case hash_key_uchar:
+		snprintf(buf, buf_len, "%c", key->c);
+		return;
+	case hash_key_int16:
+		snprintf(buf, buf_len, "%d", key->i16);
+		return;
+	case hash_key_uint16:
+		snprintf(buf, buf_len, "%u", key->u16);
+		return;
+	case hash_key_int32:
+		snprintf(buf, buf_len, "%d", key->i32);
+		return;
+	case hash_key_uint32:
+		snprintf(buf, buf_len, "%u", key->u32);
+		return;
+	case hash_key_int64:
+		snprintf(buf, buf_len, "%ld", key->i64);
+		return;
+	case hash_key_uint64:
+		snprintf(buf, buf_len, "%lu", key->u64);
+		return;
+	case hash_key_pointer:
+		snprintf(buf, buf_len, "%p", key->ptr);
+		return;
+	case hash_key_mac:
+		snprintf(buf, buf_len, "mac: %02X:%02X:%02X:%02X:%02X:%02X",
+				  key->mac.bytes[0],
+				  key->mac.bytes[1],
+				  key->mac.bytes[2],
+				  key->mac.bytes[3],
+				  key->mac.bytes[4],
+				  key->mac.bytes[5]);
+		return;
+	case hash_key_mac_str:
+		snprintf(buf, buf_len, "%s", key->mac_str);
+		return;
+	case hash_key_ip_str:
+		snprintf(buf, buf_len, "%s", key->ip_str);
+		return;
+	case hash_key_id_char32_str:
+		snprintf(buf, buf_len, "%s", key->id_char32_str);
+		return;
+	case hash_key_id_char64_str:
+		snprintf(buf, buf_len, "%s", key->id_char64_str);
+		return;
+	case hash_key_mem:
+		snprintf(buf, buf_len, "%p", key->mem);
+		return;
+	default:
+		LOG_ERROR("0x24b51f69 key.type invalid %d", key_type);
+		exit(-0x24b51f69);
+		break;
+	}
+}
 
 static inline void hash_free_node(hash_node_t *node)
 {
@@ -648,7 +706,9 @@ int hash_delete(hash_table_t *tbl, hash_key_t key)
 	    }
 	}
 
-	LOG_WARN("0x2f62c919 hash[%s] delete fail, can't find node!\n", tbl->name);
+	char key_str[257] = {0};
+	print_key(tbl->key_type, &key, key_str, sizeof(key_str));
+	LOG_WARN("0x2f62c919 hash[%s] delete fail, can't find node!, key:[%s]\n", tbl->name, key_str);
 	return ERR_OK;
 }
 
@@ -740,4 +800,77 @@ void hash_set_name(hash_table_t *tbl, const char *name)
 {
 	snprintf(tbl->name, sizeof(tbl->name), "%s", name);
 }
+
+void hash_test_print_table(hash_table_t *tbl, void fun(void *item, char *item_str, size_t item_str_len))
+{
+	LOG_DEBUG("\n\nhash name: %s", tbl->name);
+	char key_str[1024];
+	char item_str[4096];
+	
+	int idx = 0;
+	hash_node_t *item = hash_next(tbl, NULL);
+	hash_node_t *next = NULL;
+	while (item) {
+	    next = hash_next(tbl, hash_key_addr(item));
+		print_key(tbl->key_type, hash_key_addr(item), key_str, sizeof(key_str));
+		fun(hash_node_val(item), item_str, sizeof(item_str));
+		LOG_DEBUG("idx: %d, key:[%s], val: [%s]", idx++,  key_str,  item_str);
+	    item = next;
+	}
+}
+
+
+extern hash_node_t *hash_test_random_node(hash_table_t *tbl, size_t rdm_idx)
+{
+	if (NULL == tbl || 0 == tbl->node_ttl) {
+		return NULL;
+	}
+
+	size_t idx = rdm_idx % tbl->node_ttl;
+
+	for (size_t i = idx; i < tbl->height; ++i) {
+	    hash_node_t *node_head = tbl->nodes[i];
+		if (node_head) {
+			size_t list_len = 0;
+			hash_node_t *node = node_head;
+			while (node) {				
+				list_len++;
+				node = node->next;
+			}
+			size_t list_idx = rdm_idx % list_len;
+
+			node = node_head;
+			while (list_idx >= 1) {
+				node = node->next;
+				--list_idx;
+			}
+			return node;
+		}
+	}
+
+	int64_t loop_idx = (int64_t)(idx - 1);
+	for (; loop_idx >= 0; --loop_idx) {
+		hash_node_t *node_head = tbl->nodes[loop_idx];
+		if (node_head) {
+			size_t list_len = 0;
+			hash_node_t *node = node_head;
+			while (node) {				
+				list_len++;
+				node = node->next;
+			}
+			size_t list_idx = rdm_idx % list_len;
+
+			node = node_head;
+			while (list_idx >= 1) {
+				node = node->next;
+				--list_idx;
+			}
+			return node;
+		}
+	}
+
+	
+	return NULL;
+}
+
 
