@@ -159,7 +159,7 @@ ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc
     struct sockaddr_in servaddr;
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(ip_str_to_value(listen_ip));
+    servaddr.sin_addr.s_addr = htonl(ipv4_str_to_host(listen_ip));
     servaddr.sin_port = htons(listen_port);
 
     // Binding newly created socket to given IP and verification

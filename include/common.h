@@ -73,13 +73,4 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
-
-extern unsigned host_count(unsigned mask);
-
-extern int host_range(uint32_t ip, uint32_t bits_mask, uint32_t *head, uint32_t *tail);
-
-/* "192.168.1.1" 转换为主机字节序的网络地址 */
-extern uint32_t ip_str_to_value(const char *ip);
-
-
 #endif /* COMMON_H_20240820181327_0X0CADDBF7 */
