@@ -9,7 +9,7 @@
 #include "threadpool.h"
 #include "time.h"
 
-extern int mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_BYTES])
+extern int mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_BYTES]);
 
 extern int mac_digit_to_hexstr(char mac_hex_str[MAC_LEN_STR_00], const uint8_t mac_digit[MAC_LEN_BYTES]);
 
