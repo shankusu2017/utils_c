@@ -54,11 +54,13 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
 {
     uint64_t uuid = cli->uuid;
 
+    hash_key_t key = {.u64 = uuid};
+
     printf("0x085a33b8 close client, uuid: %lx\n", uuid);
 
     /* 解除 uuid->fd 的映射*/
     pthread_mutex_lock(&hdl->cli_fd_mutex);
-    hash_delete(hdl->cli_fd_hash, &uuid);
+    hash_delete(hdl->cli_fd_hash, key);
     pthread_mutex_unlock(&hdl->cli_fd_mutex);
 
     int fd = cli->fd;
@@ -74,7 +76,7 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
     cli->uuid = 0;
 
     /* B: 再 处理 hash */
-    hash_delete(hdl->cli_info_hash, &uuid); // cli 无效了
+    hash_delete(hdl->cli_info_hash, key); // cli 无效了
     cli = NULL;
 
     /* 处理 epoll */
@@ -306,7 +308,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
     }
     cli->fd = fd;
     memcpy(&cli->addr, &cliAddr, len);
-    ret = util_random(&cli->uuid, sizeof(cli->uuid));
+    ret = util_urandom(&cli->uuid, sizeof(cli->uuid));
     if (ret) {
         printf("0x363246db get uuid fail, fd: %d\n", fd);
         cli->uuid = ((uint32_t)cliAddr.sin_addr.s_addr) << 16 + cliAddr.sin_port;
@@ -325,11 +327,12 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
         return -0x59f07af6;
     }
 
+    hash_key_t key = {.u64 = cli->uuid};
     int *fd_mem = (int *)malloc(sizeof(fd));
     if (fd_mem) {
         *fd_mem = fd;
         pthread_mutex_lock(&hdl->cli_fd_mutex);
-        ret = hash_insert(hdl->cli_fd_hash, &cli->uuid, fd_mem);
+        ret = hash_insert(hdl->cli_fd_hash, key, fd_mem);
         pthread_mutex_unlock(&hdl->cli_fd_mutex);
         if (ret) {
             printf("0x4b68c8d0 insert cli.fd.hash fail, ret:%d", ret);
@@ -342,7 +345,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
         return -0x70a1fdb5;
     }
 
-    ret = hash_insert(hdl->cli_info_hash, &cli->uuid, cli);
+    ret = hash_insert(hdl->cli_info_hash, key, cli);
     if (ret) {
         printf("0x59b70e22 insert cli.info.hash fail, ret:%d", ret);
         return -0x59b70e22;
@@ -599,8 +602,10 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
         memcpy(data->buf, buf, len);
     }
 
+    hash_key_t key = {.u64 = cli_uuid};
+
     pthread_mutex_lock(&hdl->cli_fd_mutex);
-    hash_node_t *node = hash_find(hdl->cli_fd_hash, &cli_uuid);
+    hash_node_t *node = hash_find(hdl->cli_fd_hash, key);
     if (node) {
         fd = *(int *)node->val;
     } else { /* 从收到客户端消息到调用回调函数处理完毕，再将结果发回客户端的这个过程中，

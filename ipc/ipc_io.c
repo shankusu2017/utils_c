@@ -46,7 +46,7 @@ int io_read(int fd, void *buf, size_t len, int *closed)
     return left;
 }
 
-// RETURNS: 负数，读失败, OTHRES: 剩余待写入数(0:写了指定数量的数据)
+// RETURNS: 负数，写失败, OTHRES: 剩余待写入数(0:写了指定数量的数据)
 int io_write(int fd, void *buf, size_t left)
 {
     size_t ttl = 0;

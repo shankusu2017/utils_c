@@ -22,9 +22,10 @@ static uint64_t ipc_client_next_seq_id(ipc_client_handler_t *hdl)
 static int ipc_client_insert_seq(ipc_client_handler_t *hdl, uint64_t seq_id)
 {
     int ret = 0;
+    hash_key_t key = {.u64 = seq_id};
 
     pthread_mutex_lock(&hdl->ack_mtx);
-    ret = hash_insert(hdl->ack_hash, &seq_id, NULL);
+    ret = hash_insert(hdl->ack_hash, key, NULL);
     pthread_mutex_unlock(&hdl->ack_mtx);
 
     if (ret) {
@@ -38,9 +39,10 @@ static int ipc_client_insert_seq(ipc_client_handler_t *hdl, uint64_t seq_id)
 static void ipc_client_delete_seq(ipc_client_handler_t *hdl, uint64_t seq_id)
 {
     int ret = 0;
+    hash_key_t key = {.u64 = seq_id};
 
     pthread_mutex_lock(&hdl->ack_mtx);
-    ret = hash_delete(hdl->ack_hash, &seq_id);
+    ret = hash_delete(hdl->ack_hash, key);
     pthread_mutex_unlock(&hdl->ack_mtx);
 
     if (ret) {
@@ -158,7 +160,7 @@ ipc_client_handler_t *ipc_init_client(char *server_ip, uint16_t server_port)
     hdl->thread = NULL;
 
     hdl->seq_id = IPC_SEQ_ID_MIN;
-    int ret = util_random(&hdl->seq_id, sizeof(hdl->seq_id));
+    int ret = util_urandom(&hdl->seq_id, sizeof(hdl->seq_id));
     if (0 != ret) {
         goto err_uninit;
     }
@@ -238,7 +240,7 @@ void ipc_client_reconnect(ipc_client_handler_t *hdl, int reason) {
     printf("0x3093c4ea reconnection at: %x......\n", reason);
 
     pthread_mutex_lock(&hdl->io_mtx);
-    close(hdl->io_sockfd );
+    close(hdl->io_sockfd);
     hdl->io_sockfd  = -1;
     hdl->io_status = ipc_connect_status_fail;
     pthread_mutex_unlock(&hdl->io_mtx);
@@ -260,7 +262,7 @@ void ipc_client_reconnect(ipc_client_handler_t *hdl, int reason) {
 
     while (1) {
         pthread_mutex_lock(&hdl->seq_mtx);
-        int ret = util_random(&hdl->seq_id, sizeof(hdl->seq_id));
+        int ret = util_urandom(&hdl->seq_id, sizeof(hdl->seq_id));
         if (ret) {
             pthread_mutex_unlock(&hdl->seq_mtx);
             sleep(1);
@@ -377,10 +379,11 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
     outtime.tv_sec = now.tv_sec + wait_millisecond/1000;
     outtime.tv_nsec = now.tv_usec * 1000 + (wait_millisecond%1000)*1000*1000;
 
+    hash_key_t key = {.u64 = seq_id};
     int ret = 0;
     pthread_mutex_lock(&hdl->ack_mtx);
     hash_table_t *hash = hdl->ack_hash;
-    hash_node_t *node = hash_find(hash, &seq_id);
+    hash_node_t *node = hash_find(hash, key);
     if (NULL == node) {
         pthread_mutex_unlock(&hdl->ack_mtx);
         printf("0x790396ad run error, can't find sync-ack data in hash\n");
@@ -409,8 +412,8 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
     }
 
     /* 取出接收的数据，用 NULL 更新 hash,避免 hash_delete 时一同被删 */
-    ipc_proto_packet_t *msg = (ipc_proto_packet_t *)hash_update(hash, &seq_id, NULL);
-    hash_delete(hash, &seq_id);
+    ipc_proto_packet_t *msg = (ipc_proto_packet_t *)hash_update(hash, key, NULL);
+    hash_delete(hash, key);
     pthread_mutex_unlock(&hdl->ack_mtx);
 
     if (msg) {
