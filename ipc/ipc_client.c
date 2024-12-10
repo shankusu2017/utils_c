@@ -331,13 +331,14 @@ static void *ipc_client_loop_rcv(void *arg)
 
         if (msg->head.msg_type == ipc_msg_type_async_ack ||
             msg->head.msg_type == ipc_msg_type_sync_ack) {
-            if (head.ack_id < IPC_SEQ_ID_MIN) {
+            if (msg->head.ack_id < IPC_SEQ_ID_MIN) {
                 ipc_client_reconnect(hdl, 0x13a5edcb);  /* reconnect........ */
                 continue;
             }
 
+            hash_key_t key = {.u64 = msg->head.ack_id};
             pthread_mutex_lock(&hdl->ack_mtx);
-            hash_node_t *node = hash_find(hdl->ack_hash, &msg->head.ack_id);
+            hash_node_t *node = hash_find(hdl->ack_hash, key);
             if (NULL == node) {
                 printf("0x025a4313 warn ack too later");
                 pthread_cond_signal(&hdl->ack_cond);
@@ -346,7 +347,7 @@ static void *ipc_client_loop_rcv(void *arg)
                 msg = NULL;
             } else {
                 // node 的删除，由 wait_ack 处理
-                node->val = msg;
+                hash_update(hdl->ack_hash, key, msg);
                 pthread_cond_signal(&hdl->ack_cond);
                 pthread_mutex_unlock(&hdl->ack_mtx);
             }
@@ -391,7 +392,7 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
     }
 
     ret = 0;
-    while (NULL == node->val) {
+    while (NULL == hash_node_val(node)) {
         if (wait_millisecond == 0) {
             ret = pthread_cond_wait(&hdl->ack_cond, &hdl->ack_mtx);
         } else {

@@ -607,7 +607,7 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
     pthread_mutex_lock(&hdl->cli_fd_mutex);
     hash_node_t *node = hash_find(hdl->cli_fd_hash, key);
     if (node) {
-        fd = *(int *)node->val;
+        fd = *(int *)hash_node_val(node);
     } else { /* 从收到客户端消息到调用回调函数处理完毕，再将结果发回客户端的这个过程中，
               * 客户端可能已经出错等原因，已被删除，原先的 client_fd 已失效
               * client fd 可能被用到新的链接上来的 client 上

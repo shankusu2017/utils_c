@@ -1,7 +1,3 @@
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <pthread>
 #include "hash.h"
 #include "memory.h"
 #include "common.h"
@@ -71,6 +67,8 @@ int test_table_void(void)
         }
     }
 
+    pthread_rwlock_t f_rdlock_usr_id;
+    pthread_rwlock_init(&f_rdlock_usr_id, NULL);
     /* 测试 loop  */
     int64_t nA = utils_ms();
     size_t ttl = hash_node_ttl(tbl);
@@ -78,8 +76,8 @@ int test_table_void(void)
     hash_node_t *next = NULL;
     while (item) {
         pthread_rwlock_rdlock(&f_rdlock_usr_id);
-        pthread_rwlock_unlock(&f_rdlock_usr_id);
         next = hash_next(tbl, hash_key_addr(item));
+        pthread_rwlock_unlock(&f_rdlock_usr_id);
         item = next;
         ttl--;
     }
