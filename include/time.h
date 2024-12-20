@@ -3,6 +3,26 @@
 
 #include <stdint.h>
 
+#include <stdint.h>
+
+typedef void (*timer_cb) (void);
+
+#ifndef TIMER_INTERVAL_MAX
+#define TIMER_INTERVAL_MAX (20*365*24*60*60*1000)
+#endif /* TIMER_INTERVAL_MAX */
+
+int timer_init(void);
+
+/*
+ * millisecond： 超时时间间隔（毫秒）
+ * once: 是否仅仅执行一次
+ * RETURNS: 0 失败， others: 定时器句柄
+ */
+uint64_t timer_add(uint64_t millisecond, int once, timer_cb cb);
+
+int timer_delete(uint64_t hdl);
+
+
 /* 毫秒级别定时器 */
 void utils_msleep(unsigned long milli_second);
 
