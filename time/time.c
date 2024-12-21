@@ -22,34 +22,67 @@ typedef struct timer_manager_s {
 
 typedef struct timer_item_s {
     uint64_t interval;  /* 超时时间间隔(毫秒) */
-    uint8_t once;       /* 是否重复，0：不重复，others：重复 */
+    int once;           /* 是否重复，0：不重复，others：重复 */
 
     /* 下一次超时的时间戳 */
-    uint16_t ms;  /* 毫秒 [0,999] */
-    uint16_t s;  /* 秒 [0, 59]   */
-    uint16_t m;  /* 分钟 [0, 59] */
-    uint16_t h;  /* 小时 [0, 23] */
-    uint16_t d;  /* 天 [0, ) */
+    uint16_t ms;    /* 毫秒 [0,999] */
+    uint16_t s;     /* 秒 [0, 59]   */
+    uint16_t m;     /* 分钟 [0, 59] */
+    uint16_t h;     /* 小时 [0, 23] */
+    uint16_t d;     /* 天 [0, ) */
 
     timer_cb cb;
     void *arg;
 
-    struct list_head  list;	/* 必须放最后面 */
+    struct list_head  list;	/* 按惯例放最后 */
 } timer_item_t;
 
 static timer_manager_t *timer_mgr = NULL;
 static pthread_mutex_t timer_mtx = PTHREAD_MUTEX_INITIALIZER;
 
+static void timer_node_reinsert(timer_item_t *timer_node)
+{
+    uint64_t millisecond_next = (timer_mgr->ms_idx 
+        + timer_mgr->s_idx * 1000
+        + timer_mgr->m_idx * 1000 * 60
+        + timer_mgr->h_idx * 1000 * 60 * 60
+        + timer_mgr->d_idx * 1000 * 60 * 60 * 24)
+        + timer_node->interval;
+
+    timer_node->ms = (uint16_t)(millisecond_next % 1000);
+    timer_node->s = (uint16_t)((millisecond_next / 1000) % 60);
+    timer_node->m = (uint16_t)(((millisecond_next / 1000) / 60) % 60);
+    timer_node->h = (uint16_t)((((millisecond_next / 1000) / 60) / 60) % 24);
+    timer_node->d = (uint16_t)((((millisecond_next / 1000) / 60) / 60) / 24);
+
+    // printf("0x56a2c36c timer_mgr(ms: %u, s: %u, m: %u, h: %u, d: %u)\n",
+    //         timer_mgr->ms_idx, timer_mgr->s_idx, timer_mgr->m_idx, timer_mgr->h_idx, timer_mgr->d_idx);
+    // printf("0x42ecb618 time_node(interval: %ld, ms: %u, s: %u, m: %u, h: %u, d: %u)\n",
+    //         timer_node->interval, timer_node->ms, timer_node->s, timer_node->m, timer_node->h, timer_node->d);
+
+    if (timer_node->d && timer_node->d != timer_mgr->d_idx) {
+        list_add_tail(&timer_node->list, &timer_mgr->d_list_head[0]);
+    } else if (timer_node->h && timer_node->h != timer_mgr->h_idx) {
+        list_add_tail(&timer_node->list, &timer_mgr->h_list_head[timer_node->h]);
+    } else if (timer_node->m && timer_node->m != timer_mgr->m_idx) {
+        list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
+    } else if (timer_node->s && timer_node->s != timer_mgr->s_idx) {
+        list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+    } else {
+        list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+    }
+}
 
 static void *timer_check_timeout(void *arg)
 {
     UNUSED(arg);
 
-    while (1) {
+    uint64_t us_next = utils_us() + 1000 * 1;   /* 微秒 */
+
+    while (1) {        
         pthread_mutex_lock(&timer_mtx);
 
-        utils_msleep(1);    // TODO 要考虑下列计算耗时后，1ms还剩下的时间
-
+        /* 毫秒是最低刻度了，每次 嘀嗒都往前走一格 */
         {
             // 记录当前时间
             timer_mgr->ms_idx++;
@@ -61,34 +94,11 @@ static void *timer_check_timeout(void *arg)
             timer_item_t *timer_node;
             list_for_each_safe (node, node_n, &timer_mgr->ms_list_head[timer_mgr->ms_idx]) {
                 timer_node = list_entry(node, timer_item_t, list);
-                list_del(node);
                 threadpool_add_void_task(timer_mgr->threadpool, timer_node->cb, timer_node->arg);
 
                 if (0 != timer_node->once) {
-                    uint64_t millisecond_next = (timer_mgr->ms_idx 
-                            + timer_mgr->s_idx * 1000
-                            + timer_mgr->m_idx * 1000 * 60
-                            + timer_mgr->h_idx * 1000 * 60 * 60
-                            + timer_mgr->d_idx * 1000 * 60 * 60 * 24)
-                            + timer_node->interval;
-
-                    timer_node->ms = (uint16_t)(millisecond_next % 1000);
-                    timer_node->s = (uint16_t)((millisecond_next / 1000) % 60);
-                    timer_node->m = (uint16_t)(((millisecond_next / 1000) / 60) % 60);
-                    timer_node->h = (uint16_t)((((millisecond_next / 1000) / 60) / 60) % 24);
-                    timer_node->d = (uint16_t)((((millisecond_next / 1000) / 60) / 60) / 24);
-
-                    if (timer_node->d) {
-                        list_add_tail(&timer_node->list, &timer_mgr->d_list_head[0]);
-                    } else if (timer_node->h) {
-                        list_add_tail(&timer_node->list, &timer_mgr->h_list_head[timer_node->h]);
-                    } else if (timer_node->m) {
-                        list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
-                    } else if (timer_node->s) {
-                        list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
-                    } else {
-                        list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
-                    }
+                    list_del(node);
+                    timer_node_reinsert(timer_node);
                 } else {
                     free(timer_node);
                     timer_node = NULL;
@@ -105,8 +115,19 @@ static void *timer_check_timeout(void *arg)
             timer_item_t *timer_node;
             list_for_each_safe (node, node_n, &timer_mgr->s_list_head[timer_mgr->s_idx]) {
                 timer_node = list_entry(node, timer_item_t, list);
-                list_del(node);
-                list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+                if (0 != timer_node->ms) {  /* 尝试从 高层的轮往低一层的轮 移动*/
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+                } else {
+                    threadpool_add_void_task(timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                    if (0 != timer_node->once) {
+                        list_del(node);
+                        timer_node_reinsert(timer_node);
+                    } else {
+                        free(timer_node);
+                        timer_node = NULL;
+                    }
+                }
             }
         }
         if (0 == timer_mgr->ms_idx &&
@@ -120,8 +141,22 @@ static void *timer_check_timeout(void *arg)
             timer_item_t *timer_node;
             list_for_each_safe (node, node_n, &timer_mgr->m_list_head[timer_mgr->m_idx]) {
                 timer_node = list_entry(node, timer_item_t, list);
-                list_del(node);
-                list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+                if (0 != timer_node->s) {
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+                } else if (0 != timer_node->ms) {
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+                } else {
+                    threadpool_add_void_task(timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                    if (0 != timer_node->once) {
+                        list_del(node);
+                        timer_node_reinsert(timer_node);
+                    } else {
+                        free(timer_node);
+                        timer_node = NULL;
+                    }
+                }
             }
         }
         if (0 == timer_mgr->ms_idx &&
@@ -136,8 +171,28 @@ static void *timer_check_timeout(void *arg)
             timer_item_t *timer_node;
             list_for_each_safe (node, node_n, &timer_mgr->h_list_head[timer_mgr->h_idx]) {
                 timer_node = list_entry(node, timer_item_t, list);
-                list_del(node);
-                list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
+                if (0 != timer_node->m) {   /* 尝试从 高层的轮往低一层的轮 移动*/
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
+                } else if (0 != timer_node->s) {    /* 尝试从 高层的轮往低二层的轮 移动*/
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+                } else if (0 != timer_node->ms) {   /* 尝试从 高层的轮往低三层的轮 移动*/
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+                } else {   /* 刚好所有低级的轮的刻度都为0，当前表上所有低级别的刻度也是0，
+                            * 最高一级轮的时间也相同， 触发了 timeout, eg: timer上的刻度是"9:00:00:000", 当前表的指针也是 9:00:00:000。
+                            * 上下注释相同
+                            */
+                    threadpool_add_void_task(timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                    if (0 != timer_node->once) {
+                        list_del(node);
+                        timer_node_reinsert(timer_node);
+                    } else {
+                        free(timer_node);
+                        timer_node = NULL;
+                    }
+                }
             }
         }  
         if (0 == timer_mgr->ms_idx &&
@@ -153,26 +208,58 @@ static void *timer_check_timeout(void *arg)
             list_for_each_safe (node, node_n, &timer_mgr->d_list_head[0]) {
                 timer_node = list_entry(node, timer_item_t, list);
                 if (timer_node->d == timer_mgr->d_idx) {
-                    list_del(node);
-                    list_add_tail(&timer_node->list, &timer_mgr->h_list_head[timer_node->h]);
+                    if (0 != timer_node->h) {
+                        list_del(node);
+                        list_add_tail(&timer_node->list, &timer_mgr->h_list_head[timer_node->h]);
+                    } else if (0 != timer_node->m) {
+                        list_del(node);
+                        list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
+                    } else if (0 != timer_node->s) {
+                        list_del(node);
+                        list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+                    } else if (0 != timer_node->ms) {
+                        list_del(node);
+                        list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+                    } else {
+                        threadpool_add_void_task(timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                        if (0 != timer_node->once) {
+                            list_del(node);
+                            timer_node_reinsert(timer_node);
+                        } else {
+                            free(timer_node);
+                            timer_node = NULL;
+                        }
+                    }
                 }
             }
         }
 
         pthread_mutex_unlock(&timer_mtx);
+
+        /* 计算下次的 checkpoint */
+        uint64_t us_now = utils_us();
+        /* s上面的代码执行耗时既然超过了1ms*/
+        if (us_now > us_next) {
+            us_next += 1000;
+            continue;   
+        } else {
+            uint64_t us_left = us_next - us_now;
+            us_next += 1000;
+            utils_usleep(us_left);
+            continue;
+        }
     }
 
     return NULL;
 }
 
-int timer_init_do(void)
+static int timer_init_do(void)
 {
     timer_mgr = (timer_manager_t *)malloc(sizeof(*timer_mgr));
     if (NULL == timer_mgr) {
         return -0x3c48acf9;
     }
 
-    // TODO 确定 ARRAY_SIZE 是否对 pointer 起作用
     for (int i = 0; i < ARRAY_SIZE(timer_mgr->ms_list_head); ++i) {
         INIT_LIST_HEAD(&timer_mgr->ms_list_head[i]);
     }
@@ -188,6 +275,7 @@ int timer_init_do(void)
     for (int i = 0; i < ARRAY_SIZE(timer_mgr->d_list_head); ++i) {
         INIT_LIST_HEAD(&timer_mgr->d_list_head[i]);
     }
+
     timer_mgr->ms_idx = timer_mgr->s_idx = timer_mgr->m_idx = timer_mgr->h_idx = timer_mgr->d_idx = 0;
 
     timer_mgr->threadpool = threadpool_create(4, 32, 0);
@@ -276,6 +364,8 @@ static int timer_delete_do(void *hdl)
 
     timer_item_t *item = (timer_item_t*)hdl;
     list_del(&item->list);
+    free(item);
+    item = NULL;
 
     return 0;
 }
@@ -283,9 +373,9 @@ static int timer_delete_do(void *hdl)
 int timer_delete(void *hdl)
 {
     pthread_mutex_lock(&timer_mtx);
-    uint64_t hdl = timer_delete_do(hdl);
+    int ret = timer_delete_do(hdl);
     pthread_mutex_unlock(&timer_mtx);
-    return hdl;
+    return ret;
 }
 
 

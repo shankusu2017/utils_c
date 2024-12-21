@@ -10,6 +10,7 @@ extern "C" {
 /* 超高的随机性，可能阻塞，直到系统产生足够的墒 */
 int util_random(void *buf, size_t len);
 
+/* 比上面的稍弱，不阻塞 */
 int util_urandom(void *buf, size_t len);
 
 #ifdef __cplusplus

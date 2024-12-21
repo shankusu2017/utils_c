@@ -5,7 +5,7 @@
 unsigned host_count(unsigned mask)
 {
 	int bits = 32 - mask;
-	return (1<<bits) - 2;
+	return (1<<bits) - 2;   /* 第一个用作 gateway, 最后一个用于掩码 */
 }
 /*
  * 给出 192.168.15.1/24 的情况下 能分配的主机地址范围

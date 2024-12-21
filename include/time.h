@@ -3,12 +3,10 @@
 
 #include <stdint.h>
 
-#include <stdint.h>
-
-typedef void (*timer_cb) (void);
+typedef void* (*timer_cb) (void *);
 
 #ifndef TIMER_INTERVAL_MAX
-#define TIMER_INTERVAL_MAX (20*365*24*60*60*1000)
+#define TIMER_INTERVAL_MAX (20*365*24*60*60*1000ULL)
 #endif /* TIMER_INTERVAL_MAX */
 
 int timer_init(void);
@@ -18,9 +16,9 @@ int timer_init(void);
  * once: 是否仅仅执行一次
  * RETURNS: 0 失败， others: 定时器句柄
  */
-uint64_t timer_add(uint64_t millisecond, int once, timer_cb cb, void *arg);
+void *timer_add(uint64_t millisecond, int once, timer_cb cb, void *arg);
 
-int timer_delete(uint64_t hdl);
+int timer_delete(void *hdl);
 
 
 /* 毫秒级别定时器 */

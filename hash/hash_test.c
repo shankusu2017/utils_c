@@ -10,7 +10,7 @@ int test_table_void(void)
     const size_t large_size = 1024*64;
     hash_table_t *tbl = hash_create(large_size*2, hash_key_mem, sizeof(int));
 
-    printf("mem.size:%u\n", hash_test_mem_used());
+    printf("mem.size:%lu\n", hash_test_mem_used());
 
     {
         /* same key, diff val */
@@ -29,7 +29,7 @@ int test_table_void(void)
                 assert(hash_node_ttl(tbl) == 1);
             }
         }
-        printf("mem.size:%u\n", hash_test_mem_used());
+        printf("mem.size:%lu\n", hash_test_mem_used());
         assert(hash_node_ttl(tbl) == 1);
         hash_delete(tbl, key);
         assert(hash_node_ttl(tbl) == 0);
@@ -52,7 +52,7 @@ int test_table_void(void)
                 assert(hash_node_ttl(tbl) == i+1);
             }
         }
-        printf("mem.size:%u\n", hash_test_mem_used());
+        printf("mem.size:%lu\n", hash_test_mem_used());
     }
 
     {   /* look */
