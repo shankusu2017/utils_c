@@ -347,6 +347,7 @@ static int threadpool_add_to_void_task_do(threadpool_t *pool, void *(*fun)(void 
         return -0x7d1a4672;
     }
 
+    /* 当前任务太多，超过了max限制，先等前面的任务被执行 */
     while (pool->list_task_max && pool->list_task_ttl >= pool->list_task_max) {
         pthread_cond_wait(&pool->cond_task, &pool->lock);
     }

@@ -8,42 +8,167 @@ typedef struct timer_manager_s {
     struct list_head s_list_head[60];
     struct list_head m_list_head[60];
     struct list_head h_list_head[24];
-    struct list_head d_list_head[1];
-    uint64_t idx;   /* 分配出去的定时器标识符，非0， 递增，唯一 */
+    struct list_head d_list_head[1];    /* 最后一个刻度轮了，size==1 */
+
+    /* 时间轮当前指向的刻度 */
+    uint16_t ms_idx;  
+    uint16_t s_idx;
+    uint16_t m_idx;
+    uint16_t h_idx;
+    uint16_t d_idx;
+
+    threadpool_t *threadpool;
 } timer_manager_t;
 
 typedef struct timer_item_s {
+    uint64_t interval;  /* 超时时间间隔(毫秒) */
+    uint8_t once;       /* 是否重复，0：不重复，others：重复 */
+
+    /* 下一次超时的时间戳 */
     uint16_t ms;  /* 毫秒 [0,999] */
     uint16_t s;  /* 秒 [0, 59]   */
     uint16_t m;  /* 分钟 [0, 59] */
     uint16_t h;  /* 小时 [0, 23] */
     uint16_t d;  /* 天 [0, ) */
 
-    uint8_t once; /* 是否重复，0：不重复，others：重复 */
-
     timer_cb cb;
-
-    uint64_t idx;   /* 计时器标识符 */
+    void *arg;
 
     struct list_head  list;	/* 必须放最后面 */
 } timer_item_t;
 
-static hash_table_t *timer_hash = NULL;
 static timer_manager_t *timer_mgr = NULL;
 static pthread_mutex_t timer_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 
-int timer_init_do(void)
+static void *timer_check_timeout(void *arg)
 {
-    timer_hash = hash_create(1024*256, hash_key_uint64, 0);
-    if (NULL == timer_hash) {
-        return -0x3302370b;
+    UNUSED(arg);
+
+    while (1) {
+        pthread_mutex_lock(&timer_mtx);
+
+        utils_msleep(1);    // TODO 要考虑下列计算耗时后，1ms还剩下的时间
+
+        {
+            // 记录当前时间
+            timer_mgr->ms_idx++;
+            timer_mgr->ms_idx %= 1000;
+
+            struct list_head *node;
+            struct list_head *node_n;
+
+            timer_item_t *timer_node;
+            list_for_each_safe (node, node_n, &timer_mgr->ms_list_head[timer_mgr->ms_idx]) {
+                timer_node = list_entry(node, timer_item_t, list);
+                list_del(node);
+                threadpool_add_void_task(timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+
+                if (0 != timer_node->once) {
+                    uint64_t millisecond_next = (timer_mgr->ms_idx 
+                            + timer_mgr->s_idx * 1000
+                            + timer_mgr->m_idx * 1000 * 60
+                            + timer_mgr->h_idx * 1000 * 60 * 60
+                            + timer_mgr->d_idx * 1000 * 60 * 60 * 24)
+                            + timer_node->interval;
+
+                    timer_node->ms = (uint16_t)(millisecond_next % 1000);
+                    timer_node->s = (uint16_t)((millisecond_next / 1000) % 60);
+                    timer_node->m = (uint16_t)(((millisecond_next / 1000) / 60) % 60);
+                    timer_node->h = (uint16_t)((((millisecond_next / 1000) / 60) / 60) % 24);
+                    timer_node->d = (uint16_t)((((millisecond_next / 1000) / 60) / 60) / 24);
+
+                    if (timer_node->d) {
+                        list_add_tail(&timer_node->list, &timer_mgr->d_list_head[0]);
+                    } else if (timer_node->h) {
+                        list_add_tail(&timer_node->list, &timer_mgr->h_list_head[timer_node->h]);
+                    } else if (timer_node->m) {
+                        list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
+                    } else if (timer_node->s) {
+                        list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+                    } else {
+                        list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+                    }
+                } else {
+                    free(timer_node);
+                    timer_node = NULL;
+                }
+            }
+        }
+        if (0 == timer_mgr->ms_idx) {
+            timer_mgr->s_idx++;
+            timer_mgr->s_idx %= 60;
+
+            struct list_head *node;
+            struct list_head *node_n;
+
+            timer_item_t *timer_node;
+            list_for_each_safe (node, node_n, &timer_mgr->s_list_head[timer_mgr->s_idx]) {
+                timer_node = list_entry(node, timer_item_t, list);
+                list_del(node);
+                list_add_tail(&timer_node->list, &timer_mgr->ms_list_head[timer_node->ms]);
+            }
+        }
+        if (0 == timer_mgr->ms_idx &&
+            0 == timer_mgr->s_idx) {
+            timer_mgr->m_idx++;
+            timer_mgr->m_idx %= 60;
+
+            struct list_head *node;
+            struct list_head *node_n;
+
+            timer_item_t *timer_node;
+            list_for_each_safe (node, node_n, &timer_mgr->m_list_head[timer_mgr->m_idx]) {
+                timer_node = list_entry(node, timer_item_t, list);
+                list_del(node);
+                list_add_tail(&timer_node->list, &timer_mgr->s_list_head[timer_node->s]);
+            }
+        }
+        if (0 == timer_mgr->ms_idx &&
+            0 == timer_mgr->s_idx &&
+            0 == timer_mgr->m_idx) {
+            timer_mgr->h_idx++;
+            timer_mgr->h_idx %= 24;
+
+            struct list_head *node;
+            struct list_head *node_n;
+
+            timer_item_t *timer_node;
+            list_for_each_safe (node, node_n, &timer_mgr->h_list_head[timer_mgr->h_idx]) {
+                timer_node = list_entry(node, timer_item_t, list);
+                list_del(node);
+                list_add_tail(&timer_node->list, &timer_mgr->m_list_head[timer_node->m]);
+            }
+        }  
+        if (0 == timer_mgr->ms_idx &&
+            0 == timer_mgr->s_idx &&
+            0 == timer_mgr->m_idx &&
+            0 == timer_mgr->h_idx) {
+            timer_mgr->d_idx++;
+
+            struct list_head *node;
+            struct list_head *node_n;
+
+            timer_item_t *timer_node;
+            list_for_each_safe (node, node_n, &timer_mgr->d_list_head[0]) {
+                timer_node = list_entry(node, timer_item_t, list);
+                if (timer_node->d == timer_mgr->d_idx) {
+                    list_del(node);
+                    list_add_tail(&timer_node->list, &timer_mgr->h_list_head[timer_node->h]);
+                }
+            }
+        }
+
+        pthread_mutex_unlock(&timer_mtx);
     }
 
+    return NULL;
+}
+
+int timer_init_do(void)
+{
     timer_mgr = (timer_manager_t *)malloc(sizeof(*timer_mgr));
     if (NULL == timer_mgr) {
-        hash_free(timer_hash);
-        timer_hash = NULL;
         return -0x3c48acf9;
     }
 
@@ -63,8 +188,17 @@ int timer_init_do(void)
     for (int i = 0; i < ARRAY_SIZE(timer_mgr->d_list_head); ++i) {
         INIT_LIST_HEAD(&timer_mgr->d_list_head[i]);
     }
+    timer_mgr->ms_idx = timer_mgr->s_idx = timer_mgr->m_idx = timer_mgr->h_idx = timer_mgr->d_idx = 0;
 
-    timer_mgr->idx = 1;
+    timer_mgr->threadpool = threadpool_create(4, 32, 0);
+    if (NULL == timer_mgr->threadpool) {
+        return -0x51a7fab4;
+    }
+
+    int ret = threadpool_add_void_task(timer_mgr->threadpool, timer_check_timeout, NULL);
+    if (0 != ret) {
+        return -0x583f7a7e;
+    }
 
     return 0;
 }
@@ -78,79 +212,75 @@ int timer_init(void)
     return ret;
 }
 
-static uint64_t timer_add_do(uint64_t millisecond, int once, timer_cb cb)
+static void *timer_add_do(uint64_t millisecond, int once, timer_cb cb, void *arg)
 {
     if (millisecond >= TIMER_INTERVAL_MAX || 0 == millisecond) {
-        return 0;
+        return NULL;
     }
     if (NULL == cb) {
-        return 0;
+        return NULL;
     }
 
     timer_item_t *item = malloc(sizeof(*item));
     if (NULL == item) {
-        return 0;
+        return NULL;
     }
 
-    item->ms = (uint16_t)(millisecond % 1000);
-    item->s = (uint16_t)((millisecond / 1000) % 60);
-    item->m = (uint16_t)(((millisecond / 1000) / 60) % 60);
-    item->h = (uint16_t)((((millisecond / 1000) / 60) / 60) % 24);
-    item->d = (uint16_t)((((millisecond / 1000) / 60) / 60) / 24);
-
+    item->interval = millisecond;
     item->once = once;
 
+    uint64_t millisecond_next = (timer_mgr->ms_idx 
+                                + timer_mgr->s_idx * 1000
+                                + timer_mgr->m_idx * 1000 * 60
+                                + timer_mgr->h_idx * 1000 * 60 * 60
+                                + timer_mgr->d_idx * 1000 * 60 * 60 * 24)
+                                + millisecond;
+
+    item->ms = (uint16_t)(millisecond_next % 1000);
+    item->s = (uint16_t)((millisecond_next / 1000) % 60);
+    item->m = (uint16_t)(((millisecond_next / 1000) / 60) % 60);
+    item->h = (uint16_t)((((millisecond_next / 1000) / 60) / 60) % 24);
+    item->d = (uint16_t)((((millisecond_next / 1000) / 60) / 60) / 24);
+
     item->cb = cb;
+    item->arg = arg;
 
-    hash_key_t key = {.u64 = timer_mgr->idx};
-    timer_mgr->idx++;
-    int ret = hash_insert(timer_hash, key, item);
-    if (0 != ret) {
-        free(item);
-        return 0;
-    }
-    item->idx = key.u64;
-
-    if (item->d == 0 && item->h == 0 && item->m == 0 && item->s == 0) {
-       list_add_tail(&item->list, &timer_mgr->ms_list_head[item->ms]);
-    } else if (item->d == 0 && item->h == 0 && item->m == 0) {
-       list_add_tail(&item->list, &timer_mgr->s_list_head[item->s]);
-    } else if (item->d == 0 && item->h == 0) {
-       list_add_tail(&item->list, &timer_mgr->m_list_head[item->m]);
-    } else if (item->d == 0) {
+    if (item->d) {
+       list_add_tail(&item->list, &timer_mgr->d_list_head[0]);
+    } else if (item->h) {
        list_add_tail(&item->list, &timer_mgr->h_list_head[item->h]);
+    } else if (item->m) {
+       list_add_tail(&item->list, &timer_mgr->m_list_head[item->m]);
+    } else if (item->s) {
+       list_add_tail(&item->list, &timer_mgr->s_list_head[item->s]);
     } else {
-       list_add_tail(&item->list, &timer_mgr->d_list_head[item->d]);
+       list_add_tail(&item->list, &timer_mgr->ms_list_head[item->ms]);
     }
 
-    return key.u64;
+    return item;
 }
 
-uint64_t timer_add(uint64_t millisecond, int once, timer_cb cb)
+void *timer_add(uint64_t millisecond, int once, timer_cb cb, void *arg)
 {
     pthread_mutex_lock(&timer_mtx);
-    uint64_t hdl = timer_add_do(millisecond, once, cb);
+    void *hdl = timer_add_do(millisecond, once, cb, arg);
     pthread_mutex_unlock(&timer_mtx);
     return hdl;
 }
 
-static int timer_delete_do(uint64_t hdl)
+static int timer_delete_do(void *hdl)
 {
-    hash_key_t key = {.u64 = hdl};
-
-    hash_node_t *node = hash_find(timer_hash, key);
-    if (NULL == node) {
+    if (NULL == hdl) {
         return -0x6816560a;
     }
 
-    timer_item_t *item = (timer_item_t*)hash_node_val(node);
+    timer_item_t *item = (timer_item_t*)hdl;
     list_del(&item->list);
 
-    hash_delete(timer_hash, key);
     return 0;
 }
 
-int timer_delete(uint64_t hdl)
+int timer_delete(void *hdl)
 {
     pthread_mutex_lock(&timer_mtx);
     uint64_t hdl = timer_delete_do(hdl);

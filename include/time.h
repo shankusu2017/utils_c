@@ -18,7 +18,7 @@ int timer_init(void);
  * once: 是否仅仅执行一次
  * RETURNS: 0 失败， others: 定时器句柄
  */
-uint64_t timer_add(uint64_t millisecond, int once, timer_cb cb);
+uint64_t timer_add(uint64_t millisecond, int once, timer_cb cb, void *arg);
 
 int timer_delete(uint64_t hdl);
 
