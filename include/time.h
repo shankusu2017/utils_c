@@ -3,38 +3,38 @@
 
 #include <stdint.h>
 
-typedef void* (*timer_cb) (void *);
+typedef void* (*uc_timer_cb) (void *);
 
 #ifndef TIMER_INTERVAL_MAX
 #define TIMER_INTERVAL_MAX (20*365*24*60*60*1000ULL)
 #endif /* TIMER_INTERVAL_MAX */
 
-int timer_init(void);
+/*
+ * 初始化定时器组件
+*/
+int uc_timer_init(void);
 
 /*
  * millisecond： 超时时间间隔（毫秒）
- * once: 是否仅仅执行一次
- * RETURNS: 0 失败， others: 定时器句柄
+ * ttl: 定时器超时次数（0：无限制），N：n次后停止定时逻辑
+ * RETURNS: 0 失败， others: 定时器句柄(需要调用timer_delete删除定时器避免内存泄露)
  */
-void *timer_add(uint64_t millisecond, int once, timer_cb cb, void *arg);
+void *uc_timer_add(uint64_t millisecond, uint64_t ttl, uc_timer_cb cb, void *arg);
 
-int timer_delete(void *hdl);
+/*
+ * 删除定时器
+ */
+int uc_timer_delete(void *hdl);
 
 
-/* 毫秒级别定时器 */
-void utils_msleep(unsigned long milli_second);
-
-/* 微妙级别定时器 */
-void utils_usleep(long micro_second);
+/* 毫秒级别sleep */
+void uc_time_msleep(unsigned long milli_second);
+/* 微妙级别sleep */
+void uc_time_usleep(long micro_second);
 
 /* 返回毫秒 */
-int64_t utils_ms(void);
-/* 打印并返回毫秒 */
-int64_t utils_printfms(void);
-
+int64_t uc_time_ms(void);
 /* 返回微秒 */
-int64_t utils_us(void);
-/* 打印并返回微秒 */
-int64_t utils_printfus(void);
+int64_t uc_time_us(void);
 
 #endif /* TIME_H_2024_07_19_0X34B32598 */

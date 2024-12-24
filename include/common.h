@@ -1,6 +1,10 @@
 #ifndef COMMON_H_20240820181327_0X0CADDBF7
 #define COMMON_H_20240820181327_0X0CADDBF7
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* 内部用 */
 #ifndef _WIN32
 #include <arpa/inet.h> // inet_addr()
@@ -71,6 +75,10 @@
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* COMMON_H_20240820181327_0X0CADDBF7 */

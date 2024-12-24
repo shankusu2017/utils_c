@@ -12,8 +12,7 @@ void *callback(ipc_msg_type_t msg_type, void *addr, size_t len, void **return_ad
 
     rcv_pkt_ttl++;
     if (++rcv_pkt_ttl % 10000 == 0) {
-        log("0x3e32785f rcv pkt.ttl: %lu\n", rcv_pkt_ttl);
-        utils_printfms();
+        log("0x3e32785f rcv pkt.ttl: %lu, %ld ms\n", rcv_pkt_ttl, uc_time_ms());
     }
 
     if (msg_type == ipc_msg_type_void) {

@@ -9,7 +9,7 @@ int test_cost(ipc_client_handler_t *hdl)
     int ret = 0;
     size_t times = 65536;
     size_t ttl = times;
-    int64_t begainT = utils_us();
+    int64_t begainT = uc_time_us();
     while (times--) {
         size_t len = 0;
         util_random(&len, sizeof(len));
@@ -22,7 +22,7 @@ int test_cost(ipc_client_handler_t *hdl)
             }
         }
     }
-    int64_t endT = utils_us();
+    int64_t endT = uc_time_us();
     log("%lu async cost: %ldus, avg: %ldus\n", ttl, endT - begainT, (endT- begainT)/256);
     return 0;
 }

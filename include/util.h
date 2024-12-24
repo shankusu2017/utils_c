@@ -1,13 +1,9 @@
 #ifndef UTIL_H_20240620111556_0X789B27EC
 #define UTIL_H_20240620111556_0X789B27EC
 
-/* util 库对外头文件 */
+/* util */
 
 #include "common.h"
-#include "hash.h"
-#include "ipc.h"
-#include "threadpool.h"
-#include "time.h"
 
 extern int mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_BYTES]);
 

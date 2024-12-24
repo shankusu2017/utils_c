@@ -13,7 +13,7 @@ void dlog(char *format, ...)
 
 	va_end(args);
 
-    snprintf(out, sizeof(out), "ms: %ld, %s\n", utils_ms(), buf);	/* 加上标识符和换行符 */
+    snprintf(out, sizeof(out), "ms: %ld, %s\n", uc_time_ms(), buf);	/* 加上标识符和换行符 */
     printf("%s\n", out);
     //write(fd, out);	/* 输出到指定 fd */
 }

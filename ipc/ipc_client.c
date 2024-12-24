@@ -285,7 +285,7 @@ void ipc_client_reconnect(ipc_client_handler_t *hdl, int reason) {
     while (1) {
         if (connect(hdl->io_sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) {
             printf("0x603ea840 reconnection fail......\n");
-            utils_msleep(64);
+            uc_time_msleep(64);
         } else {
             pthread_mutex_lock(&hdl->io_mtx);
             hdl->io_status = ipc_connect_status_done;

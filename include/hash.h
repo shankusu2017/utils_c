@@ -5,48 +5,11 @@
  * 链式 哈希表，如果 node_ttl / bucket_height 过大，则查询效率低，
  */
 
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h> // bzero()
-#include <unistd.h> // read(), write(), close()
-#include <stdint.h>
-#include <errno.h>
-#include <sys/types.h>          /* See NOTES */
-#include <stdint.h>
-
-
-#ifndef MAC_LEN_BYTES
-#define MAC_LEN_BYTES (6)
-#endif
-
-#ifndef MAC_LEN_STR_00
-#define MAC_LEN_STR_00 (18)
-#endif
-
-
-#ifndef IPV4_LEN_STR_00
-#define IPV4_LEN_STR_00 (16)
-#endif
-
-#ifndef ID_CHAR_32_STR_00
-#define ID_CHAR_32_STR_00  (33)
-#endif
-
-#ifndef ID_CHAR_64_STR_00
-/* 86c14d9ebf144b84b06abf0f73cc82a686c14d9ebf144b84b06abf0f73cc82a6 */
-#define ID_CHAR_64_STR_00  (65)
-#endif
-
-#ifndef HASH_NAME_LEN_00
-#define HASH_NAME_LEN_00 (257)
-#endif
-
 
 typedef struct mac_bytes_s {
     unsigned char bytes[MAC_LEN_BYTES];

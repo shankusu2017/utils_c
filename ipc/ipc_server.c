@@ -248,9 +248,9 @@ static void *ipc_server_loop_rcv(void *arg)
 
     while (1) {
         struct epoll_event evs[128];
-        int64_t debug_select_start_time = utils_ms();
+        int64_t debug_select_start_time = uc_time_ms();
         int num = epoll_wait(hdl->epoll, evs, ARRAY_SIZE(evs), -1);
-        int64_t debug_select_end_time = utils_ms();
+        int64_t debug_select_end_time = uc_time_ms();
         if (debug_select_end_time - debug_select_start_time > 10) {
             printf("0x451b00d0 select wait too long %ldms------------------\n", debug_select_end_time - debug_select_start_time);
         }

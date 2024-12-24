@@ -70,7 +70,7 @@ int test_table_void(void)
     pthread_rwlock_t f_rdlock_usr_id;
     pthread_rwlock_init(&f_rdlock_usr_id, NULL);
     /* 测试 loop  */
-    int64_t nA = utils_ms();
+    int64_t nA = uc_time_ms();
     size_t ttl = hash_node_ttl(tbl);
     hash_node_t *item = hash_next(tbl, NULL);
     hash_node_t *next = NULL;
@@ -82,12 +82,12 @@ int test_table_void(void)
         ttl--;
     }
     assert(ttl == 0);
-    printf("0x70b354d1 with rwlock loop done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
+    printf("0x70b354d1 with rwlock loop done, node.ttl: %ld,  cost: %ldms\n", large_size, uc_time_ms() - nA);
 
 
     /* 测试 delete */
     {
-        nA = utils_ms();
+        nA = uc_time_ms();
         ttl = hash_node_ttl(tbl);
         hash_node_t *item = hash_next(tbl, NULL);
         hash_node_t *next = NULL;
@@ -98,7 +98,7 @@ int test_table_void(void)
             assert(hash_node_ttl(tbl) == --ttl);
         }
         assert(hash_node_ttl(tbl) == 0);
-        printf("delete done, node.ttl: %ld,  cost: %ldms\n", large_size, utils_ms() - nA);
+        printf("delete done, node.ttl: %ld,  cost: %ldms\n", large_size, uc_time_ms() - nA);
     }
 
     /* test memory */
