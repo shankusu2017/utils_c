@@ -34,32 +34,27 @@ extern "C" {
 #include <stdint.h>
 
 
-#ifndef MAC_LEN_BYTES
-#define MAC_LEN_BYTES (6)
+#ifndef UC_MAC_LEN_BYTES
+#define UC_MAC_LEN_BYTES (6)
 #endif
 
-#ifndef MAC_LEN_STR_00
-#define MAC_LEN_STR_00 (18)
+#ifndef UC_MAC_LEN_STR_00
+#define UC_MAC_LEN_STR_00 (18)
 #endif
 
 
-#ifndef IPV4_LEN_STR_00
-#define IPV4_LEN_STR_00 (16)
+#ifndef UC_IPV4_LEN_STR_00
+#define UC_IPV4_LEN_STR_00 (16)
 #endif
 
-#ifndef ID_CHAR_32_STR_00
-#define ID_CHAR_32_STR_00  (33)
+#ifndef UC_ID_CHAR_32_STR_00
+#define UC_ID_CHAR_32_STR_00  (33)
 #endif
 
-#ifndef ID_CHAR_64_STR_00
+#ifndef UC_ID_CHAR_64_STR_00
 /* 86c14d9ebf144b84b06abf0f73cc82a686c14d9ebf144b84b06abf0f73cc82a6 */
-#define ID_CHAR_64_STR_00  (65)
+#define UC_ID_CHAR_64_STR_00  (65)
 #endif
-
-#ifndef HASH_NAME_LEN_00
-#define HASH_NAME_LEN_00 (257)
-#endif
-
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE( ARRAY ) (sizeof (ARRAY) / sizeof (ARRAY[0]))

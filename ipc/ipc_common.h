@@ -26,7 +26,7 @@ typedef enum uc_ipc_connect_status_e {
 } uc_ipc_connect_status_t;
 
 typedef struct uc_ipc_client_handler_s {
-    char server_ip[IPV4_LEN_STR_00];
+    char server_ip[UC_IPV4_LEN_STR_00];
     uint16_t server_port;
 
     uc_ipc_connect_status_t io_status;

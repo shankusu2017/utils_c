@@ -11,8 +11,12 @@
 extern "C" {
 #endif
 
+#ifndef UC_HASH_NAME_LEN_00
+#define UC_HASH_NAME_LEN_00 (257)
+#endif
+
 typedef struct uc_mac_bytes_s {
-    unsigned char bytes[MAC_LEN_BYTES];
+    unsigned char bytes[UC_MAC_LEN_BYTES];
 } __attribute__((packed)) uc_mac_bytes_t;
 
 typedef enum uc_hash_key_type_e {
@@ -44,10 +48,10 @@ typedef union uc_hash_key_u {
     int64_t i64;
     uint64_t u64;
     uc_mac_bytes_t mac;
-    char mac_str[MAC_LEN_STR_00];
-    char ip_str[IPV4_LEN_STR_00];
-    char id_char32_str[ID_CHAR_32_STR_00];
-    char id_char64_str[ID_CHAR_64_STR_00];
+    char mac_str[UC_MAC_LEN_STR_00];
+    char ip_str[UC_IPV4_LEN_STR_00];
+    char id_char32_str[UC_ID_CHAR_32_STR_00];
+    char id_char64_str[UC_ID_CHAR_64_STR_00];
     void *ptr;
     void *mem;  /* 通用类型 key */
 } uc_hash_key_t;

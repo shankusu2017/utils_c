@@ -5,13 +5,13 @@
 
 #include "common.h"
 
-extern int uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_BYTES]);
+extern int uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[UC_MAC_LEN_BYTES]);
 
-extern int uc_utils_mac_digit_to_hexstr(char mac_hex_str[MAC_LEN_STR_00], const uint8_t mac_digit[MAC_LEN_BYTES]);
+extern int uc_utils_mac_digit_to_hexstr(char mac_hex_str[UC_MAC_LEN_STR_00], const uint8_t mac_digit[UC_MAC_LEN_BYTES]);
 
-extern int uc_utils_mac_hexstr_to_lower(const char *mac_hex_str, char lower[MAC_LEN_STR_00]);
+extern int uc_utils_mac_hexstr_to_lower(const char *mac_hex_str, char lower[UC_MAC_LEN_STR_00]);
 
-extern void uc_utils_mac_to_lower(char mac_hex_str[MAC_LEN_STR_00]);
+extern void uc_utils_mac_to_lower(char mac_hex_str[UC_MAC_LEN_STR_00]);
 
 /* 主机序的 ip 值转为 "192.168.123.251" */
 extern void uc_utils_ipv4_host_to_str(uint32_t ip, char *ip_str, size_t len);

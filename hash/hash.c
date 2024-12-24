@@ -4,7 +4,7 @@
 #define ERR_OK 0
 
 struct uc_hash_table_s {
-	char name[HASH_NAME_LEN_00];
+	char name[UC_HASH_NAME_LEN_00];
     uc_hash_key_type_t key_type;
    	size_t mem_key_len;     /* 内存键的长度 */
 
@@ -439,13 +439,13 @@ static inline size_t uc_cal_key_len(uc_hash_table_t *tbl)
     case uc_hash_key_mac:
         return sizeof(uc_mac_bytes_t);
     case uc_hash_key_mac_str:
-        return MAC_LEN_STR_00;
+        return UC_MAC_LEN_STR_00;
     case uc_hash_key_ip_str:
-        return IPV4_LEN_STR_00;
+        return UC_IPV4_LEN_STR_00;
     case uc_hash_key_id_char32_str:
-        return ID_CHAR_32_STR_00;
+        return UC_ID_CHAR_32_STR_00;
     case uc_hash_key_id_char64_str:
-        return ID_CHAR_64_STR_00;
+        return UC_ID_CHAR_64_STR_00;
     case uc_hash_key_mem:
         return tbl->mem_key_len;
     default:

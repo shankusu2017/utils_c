@@ -26,12 +26,12 @@ int uc_utils_host_range(uint32_t ip, uint32_t bits_mask, uint32_t *head, uint32_
 }
 
 extern int
-uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_BYTES])
+uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[UC_MAC_LEN_BYTES])
 {
     int i = 0;
     uint8_t val = 0;
     const char *pos = NULL;
-    for (i = 0, pos = mac_hex_str; i < MAC_LEN_BYTES && *pos; pos++) {
+    for (i = 0, pos = mac_hex_str; i < UC_MAC_LEN_BYTES && *pos; pos++) {
         if ('A' <= *pos && 'F' >= *pos) {
             val = *pos - 'A' + 10;
         } else if ('a' <= *pos && 'f' >= *pos) {
@@ -58,7 +58,7 @@ uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_
         i++;
     }
 
-    if (i != MAC_LEN_BYTES) {
+    if (i != UC_MAC_LEN_BYTES) {
         return -1;
     }
 
@@ -66,19 +66,19 @@ uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[MAC_LEN_
 }
 
 extern int
-uc_utils_mac_digit_to_hexstr(char mac_hex_str[MAC_LEN_STR_00], const uint8_t mac_digit[MAC_LEN_BYTES])
+uc_utils_mac_digit_to_hexstr(char mac_hex_str[UC_MAC_LEN_STR_00], const uint8_t mac_digit[UC_MAC_LEN_BYTES])
 {
     int len = sprintf(mac_hex_str, "%02x:%02x:%02x:%02x:%02x:%02x", 
  		              mac_digit[0], mac_digit[1], mac_digit[2],
  		              mac_digit[3], mac_digit[4], mac_digit[5]);
 
-    return len == (MAC_LEN_STR_00 - 1) ? 0 : -1;
+    return len == (UC_MAC_LEN_STR_00 - 1) ? 0 : -1;
 }
 
 extern int
-uc_utils_mac_hexstr_to_lower(const char *mac_hex_str, char lower[MAC_LEN_STR_00])
+uc_utils_mac_hexstr_to_lower(const char *mac_hex_str, char lower[UC_MAC_LEN_STR_00])
 {
-	uint8_t mac_digit[MAC_LEN_BYTES]= {0};
+	uint8_t mac_digit[UC_MAC_LEN_BYTES]= {0};
 	lower[0] = 0;
 
 	int ret = uc_utils_mac_hexstr_to_digit(mac_hex_str, mac_digit);
@@ -91,9 +91,9 @@ uc_utils_mac_hexstr_to_lower(const char *mac_hex_str, char lower[MAC_LEN_STR_00]
 }
 
 extern void
-uc_utils_mac_to_lower(char mac_hex_str[MAC_LEN_STR_00])
+uc_utils_mac_to_lower(char mac_hex_str[UC_MAC_LEN_STR_00])
 {
-	mac_hex_str[MAC_LEN_STR_00 - 1] = 0;
+	mac_hex_str[UC_MAC_LEN_STR_00 - 1] = 0;
 
 	for (int i = 0; i < 18 - 1; ++i) {
 		if (mac_hex_str[i] >= 'A' && mac_hex_str[i] <= 'Z') {
