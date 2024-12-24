@@ -18,8 +18,8 @@ static uint64_t uc_ipc_server_next_seq_id(uc_ipc_server_handler_t *hdl)
     pthread_mutex_lock(&hdl->seq_mutex);
     next = hdl->seq_id;
     hdl->seq_id++;
-    if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
-        hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    if (hdl->seq_id < UC_IPC_SEQ_ID_MIN) {
+        hdl->seq_id = UC_IPC_SEQ_ID_MIN;
     }
     pthread_mutex_unlock(&hdl->seq_mutex);
 
@@ -110,13 +110,13 @@ uc_ipc_server_handler_t *uc_ipc_init_server(char *listen_ip, uint16_t listen_por
         return hdl;
     }
 
-    hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    hdl->seq_id = UC_IPC_SEQ_ID_MIN;
     int ret = uc_random(&hdl->seq_id, sizeof(hdl->seq_id));
     if (0 != ret) {
         goto err_uninit;
     }
-    if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
-        hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    if (hdl->seq_id < UC_IPC_SEQ_ID_MIN) {
+        hdl->seq_id = UC_IPC_SEQ_ID_MIN;
     }
 
     /* 将收到的信息传给专门处理 callback 的线程 */

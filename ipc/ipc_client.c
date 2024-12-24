@@ -10,8 +10,8 @@ static uint64_t uc_ipc_client_next_seq_id(uc_ipc_client_handler_t *hdl)
     pthread_mutex_lock(&hdl->seq_mtx);
     next = hdl->seq_id;
     hdl->seq_id++;
-    if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
-        hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    if (hdl->seq_id < UC_IPC_SEQ_ID_MIN) {
+        hdl->seq_id = UC_IPC_SEQ_ID_MIN;
     }
     pthread_mutex_unlock(&hdl->seq_mtx);
 
@@ -159,13 +159,13 @@ uc_ipc_client_handler_t *uc_ipc_init_client(char *server_ip, uint16_t server_por
     hdl->ack_hash = NULL;
     hdl->thread = NULL;
 
-    hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    hdl->seq_id = UC_IPC_SEQ_ID_MIN;
     int ret = uc_urandom(&hdl->seq_id, sizeof(hdl->seq_id));
     if (0 != ret) {
         goto err_uninit;
     }
-    if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
-        hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    if (hdl->seq_id < UC_IPC_SEQ_ID_MIN) {
+        hdl->seq_id = UC_IPC_SEQ_ID_MIN;
     }
 
     hdl->io_sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -268,8 +268,8 @@ static void uc_ipc_client_reconnect(uc_ipc_client_handler_t *hdl, int reason) {
             sleep(1);
             printf("0x187d8b58 get random fail, ret: %d\n", ret);
         } else {
-            if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
-                hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+            if (hdl->seq_id < UC_IPC_SEQ_ID_MIN) {
+                hdl->seq_id = UC_IPC_SEQ_ID_MIN;
             }
             pthread_mutex_unlock(&hdl->seq_mtx);
             break;
@@ -310,7 +310,7 @@ static void *uc_ipc_client_loop_rcv(void *arg)
             uc_ipc_client_reconnect(hdl, 0x7f839461);  /* reconnect........ */
             continue;
         }
-        if (head.seq_id < UC_UC_IPC_SEQ_ID_MIN) {
+        if (head.seq_id < UC_IPC_SEQ_ID_MIN) {
             uc_ipc_client_reconnect(hdl, 0x3ba3bb2c);
             continue;
         }
@@ -331,7 +331,7 @@ static void *uc_ipc_client_loop_rcv(void *arg)
 
         if (msg->head.msg_type == uc_ipc_msg_type_async_ack ||
             msg->head.msg_type == uc_ipc_msg_type_sync_ack) {
-            if (msg->head.ack_id < UC_UC_IPC_SEQ_ID_MIN) {
+            if (msg->head.ack_id < UC_IPC_SEQ_ID_MIN) {
                 uc_ipc_client_reconnect(hdl, 0x13a5edcb);  /* reconnect........ */
                 continue;
             }
