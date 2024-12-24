@@ -50,7 +50,7 @@ static int test_thread_number(void)
 
 int main(int argc, char *argv[])
 {
-    int ret = test_thread_number());
+    int ret = test_thread_number();
 
     return ret;
 }
