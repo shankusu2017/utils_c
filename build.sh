@@ -12,7 +12,7 @@ threadpool/threadpool.c time/time.c util/util.c log/log.c -Iipc -Iinclude -lpthr
 gcc log/log.c util/util.c time/time.c threadpool/threadpool.c hash/hash.c hash/hash_test.c  \
 -Iinclude -lpthread -g -o bin/hash_test
 
-gcc log/log.c util/util.c time/time.c threadpool/threadpool.c hash/hash.c hash/thread_test.c  \
+gcc log/log.c util/util.c time/time.c threadpool/threadpool.c hash/hash.c threadpool/thread_test.c  \
 -Iinclude -lpthread -g -o bin/thread_test
 
 gcc time/time_test.c log/log.c util/util.c time/time.c threadpool/threadpool.c \
