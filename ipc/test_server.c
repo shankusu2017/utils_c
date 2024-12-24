@@ -5,7 +5,7 @@
  * 10K/s 发送和处理包的能力， packet.size从[1,128K]一次递增
  */
 
-void *callback(ipc_msg_type_t msg_type, void *addr, size_t len, void **return_addr, size_t *return_len)
+void *callback(uc_ipc_msg_type_t msg_type, void *addr, size_t len, void **return_addr, size_t *return_len)
 {
     // static int s_idx = 0;
     static uint64_t rcv_pkt_ttl = 0;
@@ -15,11 +15,11 @@ void *callback(ipc_msg_type_t msg_type, void *addr, size_t len, void **return_ad
         log("0x3e32785f rcv pkt.ttl: %lu, %ld ms\n", rcv_pkt_ttl, uc_time_ms());
     }
 
-    if (msg_type == ipc_msg_type_void) {
+    if (msg_type == uc_ipc_msg_type_void) {
         return NULL;
-    } else if (msg_type == ipc_msg_type_async_send) {
+    } else if (msg_type == uc_ipc_msg_type_async_send) {
         return NULL;
-    } else if (msg_type == ipc_msg_type_sync_send) {
+    } else if (msg_type == uc_ipc_msg_type_sync_send) {
         // 来什么，复制一份回过去就行
         *return_addr = malloc(len);
         if (*return_addr) {

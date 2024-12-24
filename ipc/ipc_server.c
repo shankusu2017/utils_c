@@ -9,7 +9,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *cli);
 static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli);
 static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cli);
 static void *ipc_server_loop_callback(void *arg);
-static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, ipc_msg_type_t msg_type, void *buf, size_t len);
+static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len);
 static void ipc_server_free_pipe_msg(ipc_pipe_data_t *msg);
 
 static uint64_t ipc_server_next_seq_id(ipc_server_handler_t *hdl)
@@ -28,7 +28,7 @@ static uint64_t ipc_server_next_seq_id(ipc_server_handler_t *hdl)
 
 static int ipc_server_send_ack(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id)
 {
-    int ret = ipc_server_send_msg(hdl, cli_uuid, ack_id, ipc_msg_type_async_ack, NULL, 0);
+    int ret = ipc_server_send_msg(hdl, cli_uuid, ack_id, uc_ipc_msg_type_async_ack, NULL, 0);
     if (ret) {
         printf("0x274ceea5 send pool fail, ret: %d", ret);
         return -0x274ceea5;
@@ -478,7 +478,7 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
     /* 重置 cli, 为读下一份 msg 做准备 */
     ipc_server_reset_cli_proto(cli);
 
-    if (pipe_msg->ipc_head.msg_type == ipc_msg_type_void) {
+    if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_void) {
         #ifdef IPC_DEBUG_IO
             static size_t rcv_ttl = 0;
             if (++rcv_ttl % 10000 == 0) {
@@ -495,7 +495,7 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
             printf("0x457e761d write to pipe fail, ret:%d\n", ret);
             return -0x457e761d;
         }
-    } else if (pipe_msg->ipc_head.msg_type == ipc_msg_type_async_send) {
+    } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_async_send) {
         // 立刻发送 ack 给对方
         ipc_server_send_ack(hdl, cli->uuid, pipe_msg->ipc_head.seq_id);
         // callback
@@ -504,7 +504,7 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
             ipc_server_free_pipe_msg(pipe_msg);
             printf("0x1c15b0bb write to pipe fail, ret:%d\n", ret);
         }
-    } else if (pipe_msg->ipc_head.msg_type == ipc_msg_type_sync_send) {
+    } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_sync_send) {
         // callback，并且由callback函数返回 ack 给 client
         int ret = io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
         if (ret) {
@@ -563,12 +563,12 @@ static void *ipc_server_loop_callback(void *arg)
 					// TODO  进一步的处理
                     // read error
                 }
-                if (pipe_msg->ipc_head.msg_type == ipc_msg_type_void ||
-                    pipe_msg->ipc_head.msg_type == ipc_msg_type_async_send) {
+                if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_void ||
+                    pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_async_send) {
                     hdl->cb(pipe_msg->ipc_head.msg_type, pipe_msg->buf, pipe_msg->ipc_head.ttl, &pipe_msg->return_addr, &pipe_msg->return_len);
-                } else if (pipe_msg->ipc_head.msg_type == ipc_msg_type_sync_send) {
+                } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_sync_send) {
                     hdl->cb(pipe_msg->ipc_head.msg_type, pipe_msg->buf, pipe_msg->ipc_head.ttl, &pipe_msg->return_addr, &pipe_msg->return_len);
-                    ipc_server_send_msg(hdl, pipe_msg->cli_uuid, pipe_msg->ipc_head.seq_id, ipc_msg_type_sync_ack, pipe_msg->return_addr, pipe_msg->return_len);
+                    ipc_server_send_msg(hdl, pipe_msg->cli_uuid, pipe_msg->ipc_head.seq_id, uc_ipc_msg_type_sync_ack, pipe_msg->return_addr, pipe_msg->return_len);
                 }
                 // TODO 回消息给 client
                 //TODO
@@ -582,7 +582,7 @@ static void *ipc_server_loop_callback(void *arg)
 }
 
 
-static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, ipc_msg_type_t msg_type, void *buf, size_t len)
+static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len)
 {
     uint64_t seq_id = ipc_server_next_seq_id(hdl);
 	int fd = -1;

@@ -75,7 +75,7 @@ write_done:
     return NULL;
 }
 
-static int ipc_client_send(ipc_client_handler_t *hdl, uint64_t seq_id, ipc_msg_type_t msg_type, void *buf, size_t len)
+static int ipc_client_send(ipc_client_handler_t *hdl, uint64_t seq_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len)
 {
     ipc_proto_packet_t *proto_pkt = (ipc_proto_packet_t*)malloc(sizeof(ipc_proto_packet_t) + len);
     if (NULL == proto_pkt) {
@@ -329,8 +329,8 @@ static void *ipc_client_loop_rcv(void *arg)
             continue;
         }
 
-        if (msg->head.msg_type == ipc_msg_type_async_ack ||
-            msg->head.msg_type == ipc_msg_type_sync_ack) {
+        if (msg->head.msg_type == uc_ipc_msg_type_async_ack ||
+            msg->head.msg_type == uc_ipc_msg_type_sync_ack) {
             if (msg->head.ack_id < IPC_SEQ_ID_MIN) {
                 ipc_client_reconnect(hdl, 0x13a5edcb);  /* reconnect........ */
                 continue;
@@ -439,7 +439,7 @@ static int ipc_client_wait_ack(ipc_client_handler_t *hdl, uint64_t seq_id, int32
 int ipc_client_try_send(ipc_client_handler_t *hdl, void *buf, size_t len)
 {
     uint64_t msg_id = ipc_client_next_seq_id(hdl);
-    int ret = ipc_client_send(hdl, msg_id, ipc_msg_type_void, buf, len);
+    int ret = ipc_client_send(hdl, msg_id, uc_ipc_msg_type_void, buf, len);
     if (ret) {
         printf("0x146071f6 insert pool fail, ret: %d", ret);
         return -0x146071f6;
@@ -463,7 +463,7 @@ int ipc_client_async_send(ipc_client_handler_t *hdl, void *buf, size_t len, int3
         return -0x3d5ee086;
     }
 
-    ret = ipc_client_send(hdl, seq_id, ipc_msg_type_async_send, buf, len);
+    ret = ipc_client_send(hdl, seq_id, uc_ipc_msg_type_async_send, buf, len);
     if (ret) {
         ipc_client_delete_seq(hdl, seq_id);
         printf("0x274ceea5 ipc client send fail, ret: %d", ret);
@@ -498,7 +498,7 @@ int ipc_client_sync_send(ipc_client_handler_t *hdl, void *buf, size_t len, int32
         return -0x7b4123c4;
     }
 
-    ret = ipc_client_send(hdl, seq_id, ipc_msg_type_sync_send, buf, len);
+    ret = ipc_client_send(hdl, seq_id, uc_ipc_msg_type_sync_send, buf, len);
     if (ret) {
         ipc_client_delete_seq(hdl, seq_id);
         printf("0x5f879be6 send fail, ret: %d", ret);

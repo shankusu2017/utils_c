@@ -84,7 +84,7 @@ typedef struct ipc_server_handler_s {
 /* 协议头 */
 typedef struct ipc_proto_header_s {
     uint64_t ttl;           /* 原始的数据长度(不含协议头) */
-    ipc_msg_type_t msg_type;
+    uc_ipc_msg_type_t msg_type;
     uint64_t seq_id;        /* 发送者这边的发送编号 */
     uint64_t ack_id;        /* 对某个消息的回复编号(0:无效) */
 }  __attribute__ ((packed)) ipc_proto_header_t;

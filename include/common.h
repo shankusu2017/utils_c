@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-/* 内部用 */
+
 #ifndef _WIN32
 #include <arpa/inet.h> // inet_addr()
 #include <netdb.h>

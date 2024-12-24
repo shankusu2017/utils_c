@@ -12,14 +12,15 @@
 extern "C" {
 #endif
 
-#define ipc_msg_type_void 0
-#define ipc_msg_type_async_send 1
-#define ipc_msg_type_async_ack 2
-#define ipc_msg_type_sync_send 3
-#define ipc_msg_type_sync_ack 4
-typedef int16_t ipc_msg_type_t;
+typedef enum {
+    uc_ipc_msg_type_void,
+    uc_ipc_msg_type_async_send,
+    uc_ipc_msg_type_async_ack,
+    uc_ipc_msg_type_sync_send,
+    uc_ipc_msg_type_sync_ack,
+} uc_ipc_msg_type_t;
 
-typedef void *(*ipc_callback)(ipc_msg_type_t msg_type, void *addr, size_t len, void **return_addr, size_t *return_len);
+typedef void *(*ipc_callback)(uc_ipc_msg_type_t msg_type, void *addr, size_t len, void **return_addr, size_t *return_len);
 typedef struct ipc_client_handler_s ipc_client_handler_t;
 typedef struct ipc_server_handler_s ipc_server_handler_t;
 
