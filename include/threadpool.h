@@ -31,15 +31,6 @@ extern int uc_threadpool_add_void_task(uc_threadpool_t *pool, void *(*function)(
 /* 放到队列的最前面 */
 extern int uc_threadpool_insert_void_task(uc_threadpool_t *pool, void *(*function)(void *arg), void *arg);
 
-/* 申请一个 task(task_size不为0的pool才可调用)
- * 需要设置 func 函数指针、准备好 arg，才能调用 add_task
- */
-extern uc_threadpool_task_t *uc_threadpool_malloc_fixed_task(uc_threadpool_t *pool);
-/*
- * 设置好 上述 task 后，调用此函数将任务到线程池任务队列末尾
-*/
-extern int uc_threadpool_add_fixed_task(uc_threadpool_t *pool, uc_threadpool_task_t *task);
-
 /*
  * 等待任务队列被取空
  * WARN: 不要同时在其它的线程中添加新的任务
