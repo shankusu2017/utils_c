@@ -320,7 +320,7 @@ static int uc_timer_init_do(void)
 
     uc_timer_mgr->ms_idx = uc_timer_mgr->s_idx = uc_timer_mgr->m_idx = uc_timer_mgr->h_idx = uc_timer_mgr->d_idx = 0;
 
-    uc_timer_mgr->threadpool = uc_threadpool_create(4, 32, 0);
+    uc_timer_mgr->threadpool = uc_threadpool_create(4, 32);
     if (NULL == uc_timer_mgr->threadpool) {
         free(uc_timer_mgr);
         uc_timer_mgr = NULL;

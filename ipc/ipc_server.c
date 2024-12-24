@@ -187,7 +187,7 @@ uc_ipc_server_handler_t *uc_ipc_init_server(char *listen_ip, uint16_t listen_por
         goto err_uninit;
     }
 
-    hdl->thread = uc_threadpool_create(2, 2, 0);   /* rcv + cb */
+    hdl->thread = uc_threadpool_create(2, 2);   /* rcv + cb */
     if (NULL == hdl->thread) {
         goto err_uninit;
     }

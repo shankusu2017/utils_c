@@ -17,7 +17,7 @@ static void *print_arg(void *arg)
 
 static int test_thread_number(void)
 {
-    uc_threadpool_t *th = uc_threadpool_create(1, 128, sizeof(int));
+    uc_threadpool_t *th = uc_threadpool_create(1, 128);
     if (!th) {
         printf("create threadpool fail\n");
         exit(-1);
