@@ -21,7 +21,7 @@ typedef struct uc_threadpool_task_s {
 /* 创建线程池
  * task_size: 任务的固定大小，若不固定则填0
 */
-extern uc_threadpool_t *uc_threadpool_create(uint32_t thr_num_min, uint32_t thr_num_max, size_t task_size);
+extern uc_threadpool_t *uc_threadpool_create(uint32_t thr_num_min, uint32_t thr_num_max);
 
 /*
  * 向线程池的任务队列中添加一个任务(task_size==0(尺寸不固定)),放到队列的最后面
