@@ -99,7 +99,7 @@ static void *uc_timer_check_timeout(void *arg)
                 /* 无限次数 */
                 if (0 == timer_node->ttl) {
                     list_del(node);
-                    timer_node_reinsert(timer_node);
+                    uc_timer_node_reinsert(timer_node);
                 } else {
                     timer_node->ttl--;
                     /* 剩余次数耗尽 */
@@ -109,7 +109,7 @@ static void *uc_timer_check_timeout(void *arg)
                         // timer_node = NULL;
                     } else {
                         list_del(node);
-                        timer_node_reinsert(timer_node);
+                        uc_timer_node_reinsert(timer_node);
                     }
                 }
             }
@@ -131,7 +131,7 @@ static void *uc_timer_check_timeout(void *arg)
                     threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                     if (0 == timer_node->ttl) {
                         list_del(node);
-                        timer_node_reinsert(timer_node);
+                        uc_timer_node_reinsert(timer_node);
                     } else {
                         timer_node->ttl--;
                         if (0 == timer_node->ttl) {
@@ -140,7 +140,7 @@ static void *uc_timer_check_timeout(void *arg)
                             // timer_node = NULL;
                         } else {
                             list_del(node);
-                            timer_node_reinsert(timer_node);
+                            uc_timer_node_reinsert(timer_node);
                         }
                     }
                 }
@@ -167,7 +167,7 @@ static void *uc_timer_check_timeout(void *arg)
                     threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                     if (0 == timer_node->ttl) {
                         list_del(node);
-                        timer_node_reinsert(timer_node);
+                        uc_timer_node_reinsert(timer_node);
                     } else {
                         timer_node->ttl--;
                         if (0 == timer_node->ttl) {
@@ -176,7 +176,7 @@ static void *uc_timer_check_timeout(void *arg)
                             // timer_node = NULL;
                         } else {
                             list_del(node);
-                            timer_node_reinsert(timer_node);
+                            uc_timer_node_reinsert(timer_node);
                         }
                     }
                 }
@@ -210,7 +210,7 @@ static void *uc_timer_check_timeout(void *arg)
                     threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                     if (0 == timer_node->ttl) {
                         list_del(node);
-                        timer_node_reinsert(timer_node);
+                        uc_timer_node_reinsert(timer_node);
                     } else {
                         timer_node->ttl--;
                         if (0 == timer_node->ttl) {
@@ -219,7 +219,7 @@ static void *uc_timer_check_timeout(void *arg)
                             // timer_node = NULL;
                         } else {
                             list_del(node);
-                            timer_node_reinsert(timer_node);
+                            uc_timer_node_reinsert(timer_node);
                         }
                     }
                 }
@@ -254,7 +254,7 @@ static void *uc_timer_check_timeout(void *arg)
                         threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                         if (0 == timer_node->ttl) {
                             list_del(node);
-                            timer_node_reinsert(timer_node);
+                            uc_timer_node_reinsert(timer_node);
                         } else {
                             timer_node->ttl--;
                             if (0 == timer_node->ttl) {
@@ -263,7 +263,7 @@ static void *uc_timer_check_timeout(void *arg)
                                 // timer_node = NULL;
                             } else {
                                 list_del(node);
-                                timer_node_reinsert(timer_node);
+                                uc_timer_node_reinsert(timer_node);
                             }
                         }
                     }
@@ -327,7 +327,7 @@ static int uc_timer_init_do(void)
         return -0x51a7fab4;
     }
 
-    int ret = threadpool_add_void_task(uc_timer_mgr->threadpool, timer_check_timeout, NULL);
+    int ret = threadpool_add_void_task(uc_timer_mgr->threadpool, uc_timer_check_timeout, NULL);
     if (0 != ret) {
         free(uc_timer_mgr);
         uc_timer_mgr = NULL;
