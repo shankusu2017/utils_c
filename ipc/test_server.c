@@ -52,7 +52,7 @@ void *callback(uc_ipc_msg_type_t msg_type, void *addr, size_t len, void **return
 
 int main(int argc, char *argv[])
 {
-    ipc_server_handler_t *hdl = ipc_init_server("127.0.0.1", 4000, callback);
+    uc_ipc_server_handler_t *hdl = uc_ipc_init_server("127.0.0.1", 4000, callback);
     sleep(24*3600);
     return -1;
 }

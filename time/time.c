@@ -17,7 +17,7 @@ typedef struct uc_timer_manager_s {
     uint16_t h_idx;
     uint16_t d_idx;
 
-    threadpool_t *threadpool;
+    uc_threadpool_t *threadpool;
 } uc_timer_manager_t;
 
 typedef struct uc_timer_item_s {
@@ -94,7 +94,7 @@ static void *uc_timer_check_timeout(void *arg)
             uc_timer_item_t *timer_node;
             list_for_each_safe (node, node_n, &uc_timer_mgr->ms_list_head[uc_timer_mgr->ms_idx]) {
                 timer_node = list_entry(node, uc_timer_item_t, list);
-                threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                uc_threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
 
                 /* 无限次数 */
                 if (0 == timer_node->ttl) {
@@ -128,7 +128,7 @@ static void *uc_timer_check_timeout(void *arg)
                     list_del(node);
                     list_add_tail(&timer_node->list, &uc_timer_mgr->ms_list_head[timer_node->ms]);
                 } else {
-                    threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                    uc_threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                     if (0 == timer_node->ttl) {
                         list_del(node);
                         uc_timer_node_reinsert(timer_node);
@@ -164,7 +164,7 @@ static void *uc_timer_check_timeout(void *arg)
                     list_del(node);
                     list_add_tail(&timer_node->list, &uc_timer_mgr->ms_list_head[timer_node->ms]);
                 } else {
-                    threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                    uc_threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                     if (0 == timer_node->ttl) {
                         list_del(node);
                         uc_timer_node_reinsert(timer_node);
@@ -207,7 +207,7 @@ static void *uc_timer_check_timeout(void *arg)
                             * 最高一级轮的时间也相同， 触发了 timeout, eg: timer上的刻度是"9:00:00:000", 当前表的指针也是 9:00:00:000。
                             * 上下注释相同
                             */
-                    threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                    uc_threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                     if (0 == timer_node->ttl) {
                         list_del(node);
                         uc_timer_node_reinsert(timer_node);
@@ -251,7 +251,7 @@ static void *uc_timer_check_timeout(void *arg)
                         list_del(node);
                         list_add_tail(&timer_node->list, &uc_timer_mgr->ms_list_head[timer_node->ms]);
                     } else {
-                        threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
+                        uc_threadpool_add_void_task(uc_timer_mgr->threadpool, timer_node->cb, timer_node->arg);
                         if (0 == timer_node->ttl) {
                             list_del(node);
                             uc_timer_node_reinsert(timer_node);
@@ -320,14 +320,14 @@ static int uc_timer_init_do(void)
 
     uc_timer_mgr->ms_idx = uc_timer_mgr->s_idx = uc_timer_mgr->m_idx = uc_timer_mgr->h_idx = uc_timer_mgr->d_idx = 0;
 
-    uc_timer_mgr->threadpool = threadpool_create(4, 32, 0);
+    uc_timer_mgr->threadpool = uc_threadpool_create(4, 32, 0);
     if (NULL == uc_timer_mgr->threadpool) {
         free(uc_timer_mgr);
         uc_timer_mgr = NULL;
         return -0x51a7fab4;
     }
 
-    int ret = threadpool_add_void_task(uc_timer_mgr->threadpool, uc_timer_check_timeout, NULL);
+    int ret = uc_threadpool_add_void_task(uc_timer_mgr->threadpool, uc_timer_check_timeout, NULL);
     if (0 != ret) {
         free(uc_timer_mgr);
         uc_timer_mgr = NULL;

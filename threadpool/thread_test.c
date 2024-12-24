@@ -27,28 +27,28 @@ static void *print_arg_seq(void *arg)
 
 static int test_thread_number(void)
 {
-    threadpool_t *th = threadpool_create(1, 128, sizeof(int));
+    uc_threadpool_t *th = uc_threadpool_create(1, 128, sizeof(int));
     if (!th) {
         printf("create threadpool fail\n");
         exit(-1);
     }
 
     for (int i = 0; i < 512; ++i) {
-        threadpool_task_t *task = threadpool_malloc_fixed_task(th);
+        uc_threadpool_task_t *task = uc_threadpool_malloc_fixed_task(th);
         if (NULL == task) {
             printf("malloc task fail\n");
             exit(-1);
         }
         task->fun = print_arg;
         *((int *)task->arg) = i;
-        threadpool_add_fixed_task(th, task);
+        uc_threadpool_add_fixed_task(th, task);
     }
 
-    threadpool_wait_task_done(th);
+    uc_threadpool_wait_task_done(th);
 
     //sleep(1);
     printf("thread pool close start\n");
-    threadpool_close(th);
+    uc_threadpool_close(th);
     printf("thread pool free done\n");
     printf("========> check thread task do start\n");
     for(int i = 0; i < 512; ++i) {
@@ -61,27 +61,27 @@ static int test_thread_number(void)
 
 static int test_thread_seq(void)
 {
-    threadpool_t *th = threadpool_create(1, 1, sizeof(int));
+    uc_threadpool_t *th = uc_threadpool_create(1, 1, sizeof(int));
     if (!th) {
         printf("create threadpool fail\n");
         exit(-1);
     }
 
     for (int i = 0; i < 1024; ++i) {
-        threadpool_task_t *task = threadpool_malloc_fixed_task(th);
+        uc_threadpool_task_t *task = uc_threadpool_malloc_fixed_task(th);
         if (NULL == task) {
             printf("malloc task fail\n");
             exit(-1);
         }
         task->fun = print_arg_seq;
         *((int *)task->arg) = i;
-        threadpool_add_fixed_task(th, task);
+        uc_threadpool_add_fixed_task(th, task);
     }
 
-    threadpool_wait_task_done(th);
+    uc_threadpool_wait_task_done(th);
 
     printf("thread pool close start\n");
-    threadpool_close(th);
+    uc_threadpool_close(th);
     printf("thread pool close end\n");
     sleep(1);
 

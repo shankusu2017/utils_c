@@ -1,7 +1,7 @@
 #include "common.h"
 #include "time.h"
 
-void dlog(char *format, ...)
+void uc_log(char *format, ...)
 {
     char buf[2048];
     char out[2048+1024];

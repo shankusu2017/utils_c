@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-extern int io_read(int fd, void *buf, size_t len, int *closed);
-extern int io_write(int fd, void *buf, size_t len);
+extern int uc_io_read(int fd, void *buf, size_t len, int *closed);
+extern int uc_io_write(int fd, void *buf, size_t len);
 
 #ifdef __cplusplus
 }

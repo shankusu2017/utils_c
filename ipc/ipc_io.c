@@ -4,7 +4,7 @@
 
 // RETURNS: 负数，读失败, OTHRES: 剩余读取数(0:读到了指定数量的数据)
 // closed: 0 接口未关闭， 1: 读的过程中，接口被关闭（对方关闭了 sock 等)
-int io_read(int fd, void *buf, size_t len, int *closed)
+int uc_io_read(int fd, void *buf, size_t len, int *closed)
 {
     if (closed) {
         *closed = 0;
@@ -47,7 +47,7 @@ int io_read(int fd, void *buf, size_t len, int *closed)
 }
 
 // RETURNS: 负数，写失败, OTHRES: 剩余待写入数(0:写了指定数量的数据)
-int io_write(int fd, void *buf, size_t left)
+int uc_io_write(int fd, void *buf, size_t left)
 {
     size_t ttl = 0;
     while (left > 0) {

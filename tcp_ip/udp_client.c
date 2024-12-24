@@ -4,7 +4,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdlib.h>
- 
+
  #define SERVER_PORT 8888
  #define BUFF_LEN 512
  #define SERVER_IP "172.0.5.182"

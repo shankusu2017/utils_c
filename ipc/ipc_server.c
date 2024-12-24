@@ -4,31 +4,31 @@
 #include "random.h"
 #include <fcntl.h>
 
-static void *ipc_server_loop_rcv(void *arg);
-static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *cli);
-static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli);
-static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cli);
-static void *ipc_server_loop_callback(void *arg);
-static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len);
-static void ipc_server_free_pipe_msg(ipc_pipe_data_t *msg);
+static void *uc_ipc_server_loop_rcv(void *arg);
+static int uc_ipc_server_accept_client(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli);
+static int uc_ipc_server_read_client(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli);
+static int uc_ipc_server_handle_client_msg(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli);
+static void *uc_ipc_server_loop_callback(void *arg);
+static int uc_ipc_server_send_msg(uc_ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len);
+static void uc_ipc_server_free_pipe_msg(uc_ipc_pipe_data_t *msg);
 
-static uint64_t ipc_server_next_seq_id(ipc_server_handler_t *hdl)
+static uint64_t uc_ipc_server_next_seq_id(uc_ipc_server_handler_t *hdl)
 {
     uint64_t next = 0;
     pthread_mutex_lock(&hdl->seq_mutex);
     next = hdl->seq_id;
     hdl->seq_id++;
-    if (hdl->seq_id < IPC_SEQ_ID_MIN) {
-        hdl->seq_id = IPC_SEQ_ID_MIN;
+    if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
+        hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
     }
     pthread_mutex_unlock(&hdl->seq_mutex);
 
     return next;
 }
 
-static int ipc_server_send_ack(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id)
+static int uc_ipc_server_send_ack(uc_ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id)
 {
-    int ret = ipc_server_send_msg(hdl, cli_uuid, ack_id, uc_ipc_msg_type_async_ack, NULL, 0);
+    int ret = uc_ipc_server_send_msg(hdl, cli_uuid, ack_id, uc_ipc_msg_type_async_ack, NULL, 0);
     if (ret) {
         printf("0x274ceea5 send pool fail, ret: %d", ret);
         return -0x274ceea5;
@@ -37,7 +37,7 @@ static int ipc_server_send_ack(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
     return ret;
 }
 
-static void ipc_server_reset_cli_proto(ipc_cli_t *cli)
+static void uc_ipc_server_reset_cli_proto(uc_ipc_cli_t *cli)
 {
     cli->has_read = cli->head_done = cli->buf_done = 0;
     memset(&cli->ipc_head, 0, sizeof(cli->ipc_head));
@@ -50,17 +50,17 @@ static void ipc_server_reset_cli_proto(ipc_cli_t *cli)
     cli->buf = NULL;
 }
 
-static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
+static void uc_ipc_server_close_cli(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli)
 {
     uint64_t uuid = cli->uuid;
 
-    hash_key_t key = {.u64 = uuid};
+    uc_hash_key_t key = {.u64 = uuid};
 
     printf("0x085a33b8 close client, uuid: %lx\n", uuid);
 
     /* 解除 uuid->fd 的映射*/
     pthread_mutex_lock(&hdl->cli_fd_mutex);
-    hash_delete(hdl->cli_fd_hash, key);
+    uc_hash_delete(hdl->cli_fd_hash, key);
     pthread_mutex_unlock(&hdl->cli_fd_mutex);
 
     int fd = cli->fd;
@@ -68,7 +68,7 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
     /* A: 先清理 cli */
 
     /* 先处理协议域 */
-    ipc_server_reset_cli_proto(cli);
+    uc_ipc_server_reset_cli_proto(cli);
     /* 再处理基本信息 */
     close(cli->fd);
     cli->fd = -1;
@@ -76,7 +76,7 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
     cli->uuid = 0;
 
     /* B: 再 处理 hash */
-    hash_delete(hdl->cli_info_hash, key); // cli 无效了
+    uc_hash_delete(hdl->cli_info_hash, key); // cli 无效了
     cli = NULL;
 
     /* 处理 epoll */
@@ -84,9 +84,9 @@ static void ipc_server_close_cli(ipc_server_handler_t *hdl, ipc_cli_t *cli)
 }
 
 
-ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc_callback cb)
+uc_ipc_server_handler_t *uc_ipc_init_server(char *listen_ip, uint16_t listen_port, uc_ipc_callback cb)
 {
-    ipc_server_handler_t *hdl = calloc(1, sizeof(ipc_server_handler_t));
+    uc_ipc_server_handler_t *hdl = calloc(1, sizeof(uc_ipc_server_handler_t));
     if (NULL == hdl) {
         return NULL;
     }
@@ -110,13 +110,13 @@ ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc
         return hdl;
     }
 
-    hdl->seq_id = IPC_SEQ_ID_MIN;
-    int ret = util_random(&hdl->seq_id, sizeof(hdl->seq_id));
+    hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
+    int ret = uc_random(&hdl->seq_id, sizeof(hdl->seq_id));
     if (0 != ret) {
         goto err_uninit;
     }
-    if (hdl->seq_id < IPC_SEQ_ID_MIN) {
-        hdl->seq_id = IPC_SEQ_ID_MIN;
+    if (hdl->seq_id < UC_UC_IPC_SEQ_ID_MIN) {
+        hdl->seq_id = UC_UC_IPC_SEQ_ID_MIN;
     }
 
     /* 将收到的信息传给专门处理 callback 的线程 */
@@ -135,13 +135,13 @@ ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc
         goto err_uninit;
 	}
 
-    hdl->cli_info_hash = hash_create(IPC_SERVER_CLIENT_MAP_SIZE, hash_key_uint64, 0);
+    hdl->cli_info_hash = uc_hash_create(UC_IPC_SERVER_CLIENT_MAP_SIZE, uc_hash_key_uint64, 0);
     if (NULL == hdl->cli_info_hash) {
         printf("0x285ab171 cli.info.hash init fail");
         goto err_uninit;
     }
 
-    hdl->cli_fd_hash = hash_create(IPC_SERVER_CLIENT_MAP_SIZE, hash_key_uint64, 0);
+    hdl->cli_fd_hash = uc_hash_create(UC_IPC_SERVER_CLIENT_MAP_SIZE, uc_hash_key_uint64, 0);
     if (NULL == hdl->cli_fd_hash) {
         printf("0x5ad92d78 cli.fd.hash init fail");
         goto err_uninit;
@@ -152,14 +152,14 @@ ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc
         printf("0x285ab517 socket creation failed...\n");
         goto err_uninit;
     }
-    setnodelay(hdl->sockfd);
-    setreuse(hdl->sockfd);
-    setnonblocking(hdl->sockfd);
+    uc_setnodelay(hdl->sockfd);
+    uc_setreuse(hdl->sockfd);
+    uc_setnonblocking(hdl->sockfd);
 
     struct sockaddr_in servaddr;
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(ipv4_str_to_host(listen_ip));
+    servaddr.sin_addr.s_addr = htonl(uc_utils_ipv4_str_to_host(listen_ip));
     servaddr.sin_port = htons(listen_port);
 
     // Binding newly created socket to given IP and verification
@@ -172,7 +172,7 @@ ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc
         printf("0x0629237e Listen failed...\n");
         goto err_uninit;
     }
-    hdl->sock_cli = (ipc_cli_t*)calloc(1, sizeof(ipc_cli_t));
+    hdl->sock_cli = (uc_ipc_cli_t*)calloc(1, sizeof(uc_ipc_cli_t));
     if (NULL == hdl->sock_cli) {
         goto err_uninit;
     }
@@ -187,20 +187,20 @@ ipc_server_handler_t *ipc_init_server(char *listen_ip, uint16_t listen_port, ipc
         goto err_uninit;
     }
 
-    hdl->thread = threadpool_create(2, 2, 0);   /* rcv + cb */
+    hdl->thread = uc_threadpool_create(2, 2, 0);   /* rcv + cb */
     if (NULL == hdl->thread) {
         goto err_uninit;
     }
-    threadpool_add_void_task(hdl->thread, ipc_server_loop_rcv, hdl);
-    threadpool_add_void_task(hdl->thread, ipc_server_loop_callback, hdl);
+    uc_threadpool_add_void_task(hdl->thread, uc_ipc_server_loop_rcv, hdl);
+    uc_threadpool_add_void_task(hdl->thread, uc_ipc_server_loop_callback, hdl);
     // 等待 接收、回调线程跑起来
-    threadpool_wait_task_done(hdl->thread);
+    uc_threadpool_wait_task_done(hdl->thread);
 
     return hdl;
 
 err_uninit:
     if (hdl->thread) {
-        threadpool_close(hdl->thread);
+        uc_threadpool_close(hdl->thread);
         hdl->thread = NULL;
     }
     if (hdl->sock_cli) {
@@ -212,11 +212,11 @@ err_uninit:
         hdl->sockfd = -1;
     }
     if (hdl->cli_fd_hash) {
-        hash_free(hdl->cli_fd_hash);
+        uc_hash_free(hdl->cli_fd_hash);
         hdl->cli_fd_hash = NULL;
     }
     if (hdl->cli_info_hash) {
-        hash_free(hdl->cli_info_hash);
+        uc_hash_free(hdl->cli_info_hash);
         hdl->cli_info_hash = NULL;
     }
     if (hdl->epoll != -1) {
@@ -242,9 +242,9 @@ err_uninit:
 }
 
 
-static void *ipc_server_loop_rcv(void *arg)
+static void *uc_ipc_server_loop_rcv(void *arg)
 {
-    ipc_server_handler_t *hdl = (ipc_server_handler_t *)arg;
+    uc_ipc_server_handler_t *hdl = (uc_ipc_server_handler_t *)arg;
 
     while (1) {
         struct epoll_event evs[128];
@@ -257,18 +257,18 @@ static void *ipc_server_loop_rcv(void *arg)
         for (int i = 0; i < num; ++i) {
             void *ptr = evs[i].data.ptr;
             if (ptr == hdl->sock_cli) {
-                int ret = ipc_server_accept_client(hdl, (ipc_cli_t *)ptr);
+                int ret = uc_ipc_server_accept_client(hdl, (uc_ipc_cli_t *)ptr);
                 if (ret) {
                     printf("0x59f07af6 accept fail, %d", ret);
                 }
             } else {
-                int ret = ipc_server_read_client(hdl, (ipc_cli_t *)ptr);
+                int ret = uc_ipc_server_read_client(hdl, (uc_ipc_cli_t *)ptr);
                 if (ret < 0) {
                     printf("0x0980bb38 rcv ret:%x\n", ret);
                 } else if(ret == 0) {
                     continue;	// go on read
                 } else if (ret > 0) {
-                    ret = ipc_server_handle_client_msg(hdl, (ipc_cli_t *)ptr);
+                    ret = uc_ipc_server_handle_client_msg(hdl, (uc_ipc_cli_t *)ptr);
                     if (ret) {
                         printf("0x4eca6368 run error:%d\n", ret);
                     }
@@ -284,9 +284,9 @@ static void *ipc_server_loop_rcv(void *arg)
 }
 
 // TODO 更详细的错误处理
-static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen_cli)
+static int uc_ipc_server_accept_client(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *listen_cli)
 {
-    ipc_cli_t *cli = NULL;
+    uc_ipc_cli_t *cli = NULL;
     int ret = 0;
     struct sockaddr_in cliAddr;
     int len = sizeof(cliAddr);
@@ -296,11 +296,11 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
         return -0x4f5d7da6;
     }
     printf("server accept the client...\n");
-    setnonblocking(fd);
-    setnodelay(fd);
-    utils_setrcvbuf(fd, IPC_SOCK_BUF_LEN);
+    uc_setnonblocking(fd);
+    uc_setnodelay(fd);
+    uc_setrcvbuf(fd, UC_IPC_SOCK_BUF_LEN);
 
-    cli = calloc(1, sizeof(ipc_cli_t));
+    cli = calloc(1, sizeof(uc_ipc_cli_t));
     if (NULL == cli) {
         close(fd);
         printf("0x1d008be0 calloc fail for accept\n");
@@ -308,7 +308,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
     }
     cli->fd = fd;
     memcpy(&cli->addr, &cliAddr, len);
-    ret = util_urandom(&cli->uuid, sizeof(cli->uuid));
+    ret = uc_urandom(&cli->uuid, sizeof(cli->uuid));
     if (ret) {
         printf("0x363246db get uuid fail, fd: %d\n", fd);
         cli->uuid = ((uint32_t)cliAddr.sin_addr.s_addr) << 16 + cliAddr.sin_port;
@@ -327,12 +327,12 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
         return -0x59f07af6;
     }
 
-    hash_key_t key = {.u64 = cli->uuid};
+    uc_hash_key_t key = {.u64 = cli->uuid};
     int *fd_mem = (int *)malloc(sizeof(fd));
     if (fd_mem) {
         *fd_mem = fd;
         pthread_mutex_lock(&hdl->cli_fd_mutex);
-        ret = hash_insert(hdl->cli_fd_hash, key, fd_mem);
+        ret = uc_hash_insert(hdl->cli_fd_hash, key, fd_mem);
         pthread_mutex_unlock(&hdl->cli_fd_mutex);
         if (ret) {
             printf("0x4b68c8d0 insert cli.fd.hash fail, ret:%d", ret);
@@ -345,7 +345,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
         return -0x70a1fdb5;
     }
 
-    ret = hash_insert(hdl->cli_info_hash, key, cli);
+    ret = uc_hash_insert(hdl->cli_info_hash, key, cli);
     if (ret) {
         printf("0x59b70e22 insert cli.info.hash fail, ret:%d", ret);
         return -0x59b70e22;
@@ -355,7 +355,7 @@ static int ipc_server_accept_client(ipc_server_handler_t *hdl, ipc_cli_t *listen
 }
 
 
-static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
+static int uc_ipc_server_read_client(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli)
 {
     while (1) {
         size_t want = 0;
@@ -367,12 +367,12 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
             count = read(cli->fd, (char *)&cli->ipc_head + cli->has_read, want);
         } else if (0 == cli->buf_done) {
             want = cli->ipc_head.ttl - (cli->has_read - sizeof(cli->ipc_head));
-            if (want > IPC_MSG_READ_BLOCK_LEN_MAX) {
-                want = IPC_MSG_READ_BLOCK_LEN_MAX;
+            if (want > UC_IPC_MSG_READ_BLOCK_LEN_MAX) {
+                want = UC_IPC_MSG_READ_BLOCK_LEN_MAX;
             }
             count = read(cli->fd, (char *)cli->buf + (cli->has_read - sizeof(cli->ipc_head)), want);
         } else {
-            ipc_server_close_cli(hdl, cli);
+            uc_ipc_server_close_cli(hdl, cli);
             printf("0x34a82f5c run error\n");   // ERROR
             return -0x34a82f5c;
         }
@@ -391,13 +391,13 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                     } else {
                         cli->buf = malloc(cli->ipc_head.ttl);
                         if (NULL == cli->buf) {
-                            ipc_server_close_cli(hdl, cli);
+                            uc_ipc_server_close_cli(hdl, cli);
                             printf("0x48a6af21 realloc for rcv msg fail, realloc.mem.len: %lu\n", cli->ipc_head.ttl);
                             return -0x48a6af21;
                         }
                     }
                 } else if (cli->has_read > sizeof(cli->ipc_head)) {
-                    ipc_server_close_cli(hdl, cli);
+                    uc_ipc_server_close_cli(hdl, cli);
                     printf("0x4a9e0f3d run error, %lu\n", cli->has_read);
                     return -0x4a9e0f3d;
                 } else {
@@ -409,7 +409,7 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                 if (cli->has_read == sizeof(cli->ipc_head) + cli->ipc_head.ttl) {
                     cli->buf_done = 1;
                 } else if (cli->has_read > sizeof(cli->ipc_head) + cli->ipc_head.ttl) {
-                    ipc_server_close_cli(hdl, cli);
+                    uc_ipc_server_close_cli(hdl, cli);
                     printf("0x73978bc5 run error, %lu:%lu\n", cli->has_read, cli->ipc_head.ttl);
                     return -0x73978bc5;
                 }else {
@@ -432,7 +432,7 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                 continue;   /* 读完 head, 接着读 buf */
             }
         } else if (count == 0) {    /* fd closed */
-            ipc_server_close_cli(hdl, cli);
+            uc_ipc_server_close_cli(hdl, cli);
             printf("0x46dd3fd2 client closed, errno: %d\n", errno);
             return -0x46dd3fd2;
         } else {
@@ -444,7 +444,7 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
                 printf("0x75b42200  read fail, EAGAIN or EWOULDBLOCK\n");
                 return 0;
             } else {
-                ipc_server_close_cli(hdl, cli);
+                uc_ipc_server_close_cli(hdl, cli);
                 printf("0x31ecfc83 read fail, errno: %d\n", errno);
                 return -0x31ecfc83;
             }
@@ -454,17 +454,17 @@ static int ipc_server_read_client(ipc_server_handler_t *hdl, ipc_cli_t *cli)
 
 
 
-static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cli)
+static int uc_ipc_server_handle_client_msg(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli)
 {
     if (cli->buf_done == 0) {
         printf("0x33a51be5 run error\n");
         return -0x33a51be5;
     }
 
-    ipc_pipe_data_t *pipe_msg = malloc(sizeof(ipc_pipe_data_t));
+    uc_ipc_pipe_data_t *pipe_msg = malloc(sizeof(uc_ipc_pipe_data_t));
     if (NULL == pipe_msg) {
         printf("0x19171e01 malloc fail\n");
-        ipc_server_reset_cli_proto(cli);
+        uc_ipc_server_reset_cli_proto(cli);
         return -0x19171e01;
     }
 
@@ -476,7 +476,7 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
     pipe_msg->return_len = 0;
 
     /* 重置 cli, 为读下一份 msg 做准备 */
-    ipc_server_reset_cli_proto(cli);
+    uc_ipc_server_reset_cli_proto(cli);
 
     if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_void) {
         #ifdef IPC_DEBUG_IO
@@ -484,36 +484,36 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
             if (++rcv_ttl % 10000 == 0) {
                 log("0x1958b03e rcv ttl: %ld", rcv_ttl);
             }
-            ipc_server_free_pipe_msg(pipe_msg);
+            uc_ipc_server_free_pipe_msg(pipe_msg);
             return 0;
         #endif
 
         // callback
-        int ret = io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
+        int ret = uc_io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
         if (ret) {
-            ipc_server_free_pipe_msg(pipe_msg);
+            uc_ipc_server_free_pipe_msg(pipe_msg);
             printf("0x457e761d write to pipe fail, ret:%d\n", ret);
             return -0x457e761d;
         }
     } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_async_send) {
         // 立刻发送 ack 给对方
-        ipc_server_send_ack(hdl, cli->uuid, pipe_msg->ipc_head.seq_id);
+        uc_ipc_server_send_ack(hdl, cli->uuid, pipe_msg->ipc_head.seq_id);
         // callback
-        int ret = io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
+        int ret = uc_io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
         if (ret) {
-            ipc_server_free_pipe_msg(pipe_msg);
+            uc_ipc_server_free_pipe_msg(pipe_msg);
             printf("0x1c15b0bb write to pipe fail, ret:%d\n", ret);
         }
     } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_sync_send) {
         // callback，并且由callback函数返回 ack 给 client
-        int ret = io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
+        int ret = uc_io_write(hdl->pipe[1], &pipe_msg, sizeof(pipe_msg));
         if (ret) {
-            ipc_server_free_pipe_msg(pipe_msg);
+            uc_ipc_server_free_pipe_msg(pipe_msg);
             printf("0x5afb2312 write to pipe fail, ret:%d\n", ret);
             return -0x5afb2312;
-        } 
+        }
     } else {    /* 收到了不应该收到的信息类型 */
-        ipc_server_free_pipe_msg(pipe_msg);
+        uc_ipc_server_free_pipe_msg(pipe_msg);
         printf("0x0421a96f WARN rcv invalid msg(%d)\n", pipe_msg->ipc_head.msg_type);
         return -0x0421a96f;
     }
@@ -522,7 +522,7 @@ static int ipc_server_handle_client_msg(ipc_server_handler_t *hdl, ipc_cli_t *cl
 }
 
 
-static void ipc_server_free_pipe_msg(ipc_pipe_data_t *pipe_msg)
+static void uc_ipc_server_free_pipe_msg(uc_ipc_pipe_data_t *pipe_msg)
 {
     pipe_msg->cli_uuid = 0;
     free(pipe_msg->buf);
@@ -536,10 +536,10 @@ static void ipc_server_free_pipe_msg(ipc_pipe_data_t *pipe_msg)
     // pipe_msg = NULL;
 }
 
-static void *ipc_server_loop_callback(void *arg)
+static void *uc_ipc_server_loop_callback(void *arg)
 {
-    ipc_server_handler_t *hdl = (ipc_server_handler_t *)arg;
-    ipc_pipe_data_t *pipe_msg;
+    uc_ipc_server_handler_t *hdl = (uc_ipc_server_handler_t *)arg;
+    uc_ipc_pipe_data_t *pipe_msg;
     int closed;
 
     while (1)  {
@@ -556,7 +556,7 @@ static void *ipc_server_loop_callback(void *arg)
             continue;
         }  else {
             if (FD_ISSET(hdl->pipe[0], &fds) > 0) {
-                ret = io_read(hdl->pipe[0], &pipe_msg, sizeof(pipe_msg), &closed);
+                ret = uc_io_read(hdl->pipe[0], &pipe_msg, sizeof(pipe_msg), &closed);
                 if (ret) {
                     printf("0x6cc13f4c io.read fail ret: %d\n", ret);
                     continue;
@@ -568,13 +568,13 @@ static void *ipc_server_loop_callback(void *arg)
                     hdl->cb(pipe_msg->ipc_head.msg_type, pipe_msg->buf, pipe_msg->ipc_head.ttl, &pipe_msg->return_addr, &pipe_msg->return_len);
                 } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_sync_send) {
                     hdl->cb(pipe_msg->ipc_head.msg_type, pipe_msg->buf, pipe_msg->ipc_head.ttl, &pipe_msg->return_addr, &pipe_msg->return_len);
-                    ipc_server_send_msg(hdl, pipe_msg->cli_uuid, pipe_msg->ipc_head.seq_id, uc_ipc_msg_type_sync_ack, pipe_msg->return_addr, pipe_msg->return_len);
+                    uc_ipc_server_send_msg(hdl, pipe_msg->cli_uuid, pipe_msg->ipc_head.seq_id, uc_ipc_msg_type_sync_ack, pipe_msg->return_addr, pipe_msg->return_len);
                 }
                 // TODO 回消息给 client
                 //TODO
                 // 处理下 msg 对应的内存
                 // 根据 msg_type 来做进一步的处理
-                ipc_server_free_pipe_msg(pipe_msg);
+                uc_ipc_server_free_pipe_msg(pipe_msg);
                 pipe_msg = NULL;
             }
         }
@@ -582,12 +582,12 @@ static void *ipc_server_loop_callback(void *arg)
 }
 
 
-static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len)
+static int uc_ipc_server_send_msg(uc_ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len)
 {
-    uint64_t seq_id = ipc_server_next_seq_id(hdl);
+    uint64_t seq_id = uc_ipc_server_next_seq_id(hdl);
 	int fd = -1;
 
-    ipc_proto_packet_t *data = malloc(sizeof(ipc_proto_header_t) + len);
+    uc_ipc_proto_packet_t *data = malloc(sizeof(uc_ipc_proto_header_t) + len);
     if (NULL == data) {
         printf("0x1f9385ca malloc fail...\n");
         return -0x1f9385ca;
@@ -602,12 +602,12 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
         memcpy(data->buf, buf, len);
     }
 
-    hash_key_t key = {.u64 = cli_uuid};
+    uc_hash_key_t key = {.u64 = cli_uuid};
 
     pthread_mutex_lock(&hdl->cli_fd_mutex);
-    hash_node_t *node = hash_find(hdl->cli_fd_hash, key);
+    uc_hash_node_t *node = uc_hash_find(hdl->cli_fd_hash, key);
     if (node) {
-        fd = *(int *)hash_node_val(node);
+        fd = *(int *)uc_hash_node_val(node);
     } else { /* 从收到客户端消息到调用回调函数处理完毕，再将结果发回客户端的这个过程中，
               * 客户端可能已经出错等原因，已被删除，原先的 client_fd 已失效
               * client fd 可能被用到新的链接上来的 client 上
@@ -623,7 +623,7 @@ static int ipc_server_send_msg(ipc_server_handler_t *hdl, uint64_t cli_uuid, uin
         // TODO 
     }
 
-    int ret = io_write(fd, data, sizeof(data->head) + data->head.ttl);
+    int ret = uc_io_write(fd, data, sizeof(data->head) + data->head.ttl);
     pthread_mutex_unlock(&hdl->cli_fd_mutex);
     free(data);
 	data = NULL;

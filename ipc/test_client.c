@@ -3,7 +3,7 @@
 #include "log.h"
 
 
-int test_cost(ipc_client_handler_t *hdl)
+int test_cost(uc_ipc_client_handler_t *hdl)
 {
     static int idx = 0;
     int ret = 0;
@@ -12,10 +12,10 @@ int test_cost(ipc_client_handler_t *hdl)
     int64_t begainT = uc_time_us();
     while (times--) {
         size_t len = 0;
-        util_random(&len, sizeof(len));
+        uc_random(&len, sizeof(len));
         char *send_buf = (char *)malloc(len);
         if (send_buf) {
-            ret = ipc_client_async_send(hdl, send_buf, len, 3000);
+            ret = uc_ipc_client_async_send(hdl, send_buf, len, 3000);
             free(send_buf);
             if (ret) {
                 return ret;
@@ -27,7 +27,7 @@ int test_cost(ipc_client_handler_t *hdl)
     return 0;
 }
 
-int test_void(ipc_client_handler_t *hdl, int times)
+int test_void(uc_ipc_client_handler_t *hdl, int times)
 {
     static int idx = 0;
     int ret = 0;
@@ -39,7 +39,7 @@ int test_void(ipc_client_handler_t *hdl, int times)
             if (idx % 10000 == 0) {
                 log("0x64c8d752 idx; %ld\n", idx);
             }
-            ret = ipc_client_try_send(hdl, send_buf, send_len);
+            ret = uc_ipc_client_try_send(hdl, send_buf, send_len);
             free(send_buf);
             if (ret) {
                 return ret;
@@ -49,7 +49,7 @@ int test_void(ipc_client_handler_t *hdl, int times)
     return 0;
 }
 
-int test_async(ipc_client_handler_t *hdl, int times) 
+int test_async(uc_ipc_client_handler_t *hdl, int times) 
 {
     static int idx = 0;
     int ret = 0;
@@ -58,7 +58,7 @@ int test_async(ipc_client_handler_t *hdl, int times)
         char *send_buf = (char *)malloc(send_len);
         if (send_buf) {
             idx++;
-            ret = ipc_client_async_send(hdl, send_buf, send_len, 0);
+            ret = uc_ipc_client_async_send(hdl, send_buf, send_len, 0);
             if (idx % 10000 == 0){
                 log("async send %d, len: %ld\n", idx, send_len);
             }
@@ -71,7 +71,7 @@ int test_async(ipc_client_handler_t *hdl, int times)
     return 0;
 }
 
-int test_sync(ipc_client_handler_t *hdl, int times) 
+int test_sync(uc_ipc_client_handler_t *hdl, int times) 
 {
     static int idx = 0;
     int ret = 0;
@@ -86,7 +86,7 @@ int test_sync(ipc_client_handler_t *hdl, int times)
             if (times % 10000 == 0) {
                 log("sync client idx: %d, len: %ld\n", idx, send_len);
             }
-            ret = ipc_client_sync_send(hdl, send_buf, send_len, 3*1000, &msg_hdl, &return_addr, &return_len);
+            ret = uc_ipc_client_sync_send(hdl, send_buf, send_len, 3*1000, &msg_hdl, &return_addr, &return_len);
             if (ret != 0) {
                 log("0x6c523505 test sync fail, ret: %d\n", ret);
                 return ret;
@@ -112,7 +112,7 @@ int test_sync(ipc_client_handler_t *hdl, int times)
     return 0;
 }
 
-int test_sync_small_msg(ipc_client_handler_t *hdl, int times, size_t size) 
+int test_sync_small_msg(uc_ipc_client_handler_t *hdl, int times, size_t size) 
 {
     static int idx = 0;
     int ret = 0;
@@ -127,7 +127,7 @@ int test_sync_small_msg(ipc_client_handler_t *hdl, int times, size_t size)
             if (times % 10000 == 0) {
                 log("sync small client idx: %d, len: %ld\n", idx, send_len);
             }
-            ret = ipc_client_sync_send(hdl, send_buf, send_len, 3*1000, &msg_hdl, &return_addr, &return_len);
+            ret = uc_ipc_client_sync_send(hdl, send_buf, send_len, 3*1000, &msg_hdl, &return_addr, &return_len);
             if (ret != 0) {
                 log("0x211cd456 test sync small fail, ret: %d\n", ret);
                 return ret;
@@ -157,7 +157,7 @@ int test_sync_small_msg(ipc_client_handler_t *hdl, int times, size_t size)
 int main(int argc, char *argv[])
 {
     int ret = 0;
-    ipc_client_handler_t *hdl = ipc_init_client("127.0.0.1", 4000);
+    uc_ipc_client_handler_t *hdl = uc_ipc_init_client("127.0.0.1", 4000);
     if (NULL == hdl) {
         log("init client fail\n");
         return -1;

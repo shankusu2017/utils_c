@@ -37,11 +37,11 @@ main(int argc, char *argv[])
         printf(".pkt->val: %d\n", pkt->val);
     }
     for (int i = 1; i < 32; i++) {
-        printf("mask: %d, count: %u\n", i, host_count(i));
+        printf("mask: %d, count: %u\n", i, uc_utils_host_count(i));
     }
 
     uint32_t head, tail;
-    host_range(0xc0a80f01, 12, &head, &tail);
+    uc_utils_host_range(0xc0a80f01, 12, &head, &tail);
     printf("head: %x, tail: %x\n", head, tail);
 
     int tmp = pkt1.zh++;

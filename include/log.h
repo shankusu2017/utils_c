@@ -5,13 +5,13 @@
 extern "C" {
 #endif
 
-extern void dlog(char *format, ...);
+extern void uc_log(char *format, ...);
 
-#define log(format, ...) dlog("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
-#define LOG_ERROR(format, ...) dlog("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
-#define LOG_WARN(format, ...) dlog("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
-#define LOG_NOTICE(format, ...) dlog("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
-#define LOG_DEBUG(format, ...) dlog("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define log(format, ...) uc_log("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define LOG_ERROR(format, ...) uc_log("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define LOG_WARN(format, ...) uc_log("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define LOG_NOTICE(format, ...) uc_log("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+#define LOG_DEBUG(format, ...) uc_log("%-7s %-10s %-3d "format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
 #ifdef __cplusplus
 }

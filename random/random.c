@@ -1,7 +1,7 @@
 #include "common.h"
 #include "random.h"
 
-int util_random(void *buf, size_t len)
+int uc_random(void *buf, size_t len)
 {
     memset(buf, 0, len);
 
@@ -9,7 +9,7 @@ int util_random(void *buf, size_t len)
     if (fd == -1) {
         return -0x0fe3a13d;
     }
- 
+
     size_t left = len;
     size_t ttl = 0;
     while (left > 0) {
@@ -36,7 +36,7 @@ int util_random(void *buf, size_t len)
     }
 }
 
-int util_urandom(void *buf, size_t len)
+int uc_urandom(void *buf, size_t len)
 {
     memset(buf, 0, len);
 
