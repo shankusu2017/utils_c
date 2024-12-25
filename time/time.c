@@ -3,6 +3,10 @@
 #include "threadpool.h"
 #include "list.h"
 
+/*
+ * TODO: uc_timer_check_timeout tick的精度可以根据下一个timer_out的时间来确定，没必要每1ms检查一次（或者将时间轮改为有序的列表（eg: 跳表？））
+ */
+
 typedef struct uc_timer_manager_s {
     struct list_head ms_list_head[1000];
     struct list_head s_list_head[60];
