@@ -1,5 +1,6 @@
 #include "uc_common.h"
 #include "uc_threadpool.h"
+#include "list.h"
 
 /* 任务 */
 typedef struct uc_threadpool_pid_s {
