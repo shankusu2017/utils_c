@@ -6,7 +6,7 @@ mkdir lib
 rm -rf bin
 mkdir bin
 
-gcc -shared -g  -o -lpthread lib/libuc.so hash/uc_hash.c ipc/uc_ipc_client.c ipc/uc_ipc_io.c ipc/uc_ipc_server.c log/uc_log.c \
+gcc -shared -lpthread -g  -o lib/libuc.so hash/uc_hash.c ipc/uc_ipc_client.c ipc/uc_ipc_io.c ipc/uc_ipc_server.c log/uc_log.c \
 random/uc_random.c tcp_ip/uc_tcp_ip.c threadpool/uc_threadpool.c time/uc_time.c util/uc_util.c -Iinclude -Iinc
 
 gcc tcp_ip/uc_tcp_ip.c ipc/uc_test_client.c hash/uc_hash.c  ipc/uc_ipc_client.c ipc/uc_ipc_io.c ipc/uc_ipc_server.c random/uc_random.c \
