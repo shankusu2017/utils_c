@@ -3,20 +3,12 @@
 
 
 #include <stdint.h>
-#include "list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct uc_threadpool_s uc_threadpool_t;
-
-/* 任务 */
-typedef struct uc_threadpool_task_s {
-    struct list_head  list;
-    void *(*fun)(void *);
-    void *arg;
-} uc_threadpool_task_t;
 
 /* 创建线程池
  * task_size: 任务的固定大小，若不固定则填0

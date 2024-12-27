@@ -2,14 +2,14 @@
 #define IPC_COMMON_H_20240821113750_0X77F3ACE5
 
 
-#include "util.h"
-#include "threadpool.h"
-#include "hash.h"
-#include "tcp_ip.h"
-#include "time.h"
-#include "ipc.h"
-#include "random.h"
-#include "log.h"
+#include "uc_util.h"
+#include "uc_threadpool.h"
+#include "uc_hash.h"
+#include "uc_tcp_ip.h"
+#include "uc_time.h"
+#include "uc_ipc.h"
+#include "uc_random.h"
+#include "uc_log.h"
 
 
 #define IPC_DEBUG_IO 1

@@ -1,7 +1,7 @@
 #ifndef IPC_IO_H_20240821105048_0X4EF015E8
 #define IPC_IO_H_20240821105048_0X4EF015E8
 
-#include "common.h"
+#include "uc_common.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -6,7 +6,7 @@
  * SERVER: 被动接收 CLIENT 的 msg , 调用回调函数(返回ack给对方)
 */
 
-#include "common.h"
+#include "uc_common.h"
 
 #ifdef __cplusplus
 extern "C" {

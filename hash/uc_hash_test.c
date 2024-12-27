@@ -1,6 +1,5 @@
-#include "hash.h"
-#include "memory.h"
-#include "common.h"
+#include "uc_hash.h"
+#include "uc_common.h"
 
 
 int test_table_void(void)

@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "common.h"
+#include "uc_common.h"
 
 
 unsigned uc_utils_host_count(unsigned mask)

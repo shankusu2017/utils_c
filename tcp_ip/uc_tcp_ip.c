@@ -1,5 +1,5 @@
-#include "common.h"
-#include "tcp_ip.h"
+#include "uc_common.h"
+#include "uc_tcp_ip.h"
 
 int uc_setnonblocking(int sockfd)
 {

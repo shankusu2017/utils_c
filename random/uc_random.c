@@ -1,5 +1,5 @@
-#include "common.h"
-#include "random.h"
+#include "uc_common.h"
+#include "uc_random.h"
 
 int uc_random(void *buf, size_t len)
 {

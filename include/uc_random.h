@@ -1,7 +1,7 @@
 #ifndef RANDOM_H_20240820231000_0X256E0BB4
 #define RANDOM_H_20240820231000_0X256E0BB4
 
-#include "common.h"
+#include "uc_common.h"
 
 #ifdef __cplusplus
 extern "C" {

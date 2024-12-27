@@ -1,5 +1,5 @@
-#include "hash.h"
-#include "log.h"
+#include "uc_hash.h"
+#include "uc_log.h"
 
 #define ERR_OK 0
 

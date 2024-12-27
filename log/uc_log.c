@@ -1,5 +1,5 @@
-#include "common.h"
-#include "time.h"
+#include "uc_common.h"
+#include "uc_time.h"
 
 void uc_log(char *format, ...)
 {

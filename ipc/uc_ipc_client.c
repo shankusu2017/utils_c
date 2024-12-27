@@ -1,6 +1,6 @@
-#include "ipc.h"
-#include "ipc_common.h"
-#include "ipc_io.h"
+#include "uc_ipc.h"
+#include "uc_ipc_common.h"
+#include "uc_ipc_io.h"
 
 static void *uc_ipc_client_loop_rcv(void *arg);
 

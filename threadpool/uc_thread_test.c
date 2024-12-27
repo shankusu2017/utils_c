@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "threadpool.h"
+#include "uc_threadpool.h"
 
 static int test_arr[1024*1024] = {0};
 static int test_arr_seq[1024*1024] = {0};

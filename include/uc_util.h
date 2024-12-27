@@ -3,7 +3,7 @@
 
 /* util */
 
-#include "common.h"
+#include "uc_common.h"
 
 extern int uc_utils_mac_hexstr_to_digit(const char *mac_hex_str, uint8_t mac_digit[UC_MAC_LEN_BYTES]);
 

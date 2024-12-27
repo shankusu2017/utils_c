@@ -5,7 +5,7 @@
  * 链式 哈希表，如果 node_ttl / bucket_height 过大，则查询效率低，
  */
 
-#include "common.h"
+#include "uc_common.h"
 
 #ifdef __cplusplus
 extern "C" {

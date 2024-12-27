@@ -1,6 +1,6 @@
-#include "ipc.h"
-#include "random.h"
-#include "log.h"
+#include "uc_ipc.h"
+#include "uc_random.h"
+#include "uc_log.h"
 
 
 int test_cost(uc_ipc_client_handler_t *hdl)

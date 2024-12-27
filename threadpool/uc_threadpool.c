@@ -1,11 +1,18 @@
-#include "common.h"
-#include "threadpool.h"
+#include "uc_common.h"
+#include "uc_threadpool.h"
 
 /* 任务 */
 typedef struct uc_threadpool_pid_s {
     struct list_head  list;
     pthread_t pid;
 } uc_threadpool_pid_t;
+
+/* 任务 */
+typedef struct uc_threadpool_task_s {
+    struct list_head  list;
+    void *(*fun)(void *);
+    void *arg;
+} uc_threadpool_task_t;
 
 /* 线程池对象 */
 struct uc_threadpool_s {

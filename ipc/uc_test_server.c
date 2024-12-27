@@ -1,5 +1,5 @@
-#include "ipc.h"
-#include "log.h"
+#include "uc_ipc.h"
+#include "uc_log.h"
 
 /*
  * 10K/s 发送和处理包的能力， packet.size从[1,128K]一次递增

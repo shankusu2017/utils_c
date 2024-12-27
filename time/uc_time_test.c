@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "time.h"
+#include "uc_time.h"
 
 static void *timeout1(void *arg)
 {

@@ -3,17 +3,17 @@
 rm -rf bin
 mkdir bin
 
-gcc tcp_ip/tcp_ip.c ipc/test_client.c hash/hash.c  ipc/ipc_client.c ipc/ipc_io.c ipc/ipc_server.c random/random.c \
-threadpool/threadpool.c time/time.c util/util.c log/log.c -Iipc -Iinclude -lpthread -g -o bin/ipc_client
+gcc tcp_ip/uc_tcp_ip.c ipc/uc_test_client.c hash/uc_hash.c  ipc/uc_ipc_client.c ipc/uc_ipc_io.c ipc/uc_ipc_server.c random/uc_random.c \
+threadpool/uc_threadpool.c time/uc_time.c util/uc_util.c log/uc_log.c -Iipc -Iinclude -Iinc -lpthread -g -o bin/uc_ipc_client
 
-gcc tcp_ip/tcp_ip.c ipc/test_server.c hash/hash.c  ipc/ipc_client.c ipc/ipc_io.c ipc/ipc_server.c random/random.c \
-threadpool/threadpool.c time/time.c util/util.c log/log.c -Iipc -Iinclude -lpthread -g -o bin/ipc_server
+gcc tcp_ip/uc_tcp_ip.c ipc/uc_test_server.c hash/uc_hash.c  ipc/uc_ipc_client.c ipc/uc_ipc_io.c ipc/uc_ipc_server.c random/uc_random.c \
+threadpool/uc_threadpool.c time/uc_time.c util/uc_util.c log/uc_log.c -Iipc -Iinclude -Iinc -lpthread -g -o bin/uc_ipc_server
 
-gcc log/log.c util/util.c time/time.c threadpool/threadpool.c hash/hash.c hash/hash_test.c  \
--Iinclude -lpthread -g -o bin/hash_test
+gcc log/uc_log.c util/uc_util.c time/uc_time.c threadpool/uc_threadpool.c hash/uc_hash.c hash/uc_hash_test.c  \
+-Iinclude -Iinc -lpthread -g -o bin/uc_hash_test
 
-gcc log/log.c util/util.c time/time.c threadpool/threadpool.c hash/hash.c threadpool/thread_test.c  \
--Iinclude -lpthread -g -o bin/thread_test
+gcc log/uc_log.c util/uc_util.c time/uc_time.c threadpool/uc_threadpool.c hash/uc_hash.c threadpool/uc_thread_test.c  \
+-Iinclude -Iinc -lpthread -g -o bin/uc_thread_test
 
-gcc time/time_test.c log/log.c util/util.c time/time.c threadpool/threadpool.c \
--Iinclude -lpthread -g -o bin/time_test
+gcc time/uc_time_test.c log/uc_log.c util/uc_util.c time/uc_time.c threadpool/uc_threadpool.c \
+-Iinclude -Iinc -lpthread -g -o bin/uc_time_test

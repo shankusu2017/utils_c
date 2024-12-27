@@ -1,4 +1,4 @@
-#include "common.h"
+#include "uc_common.h"
 
 #define ZSKIPLIST_MAXLEVEL 32 /* Should be enough for 2^32 elements */
 #define ZSKIPLIST_P 0.25      /* Skiplist P = 1/4 */

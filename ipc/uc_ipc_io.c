@@ -1,6 +1,6 @@
-#include "ipc.h"
-#include "ipc_io.h"
-#include "ipc_common.h"
+#include "uc_ipc.h"
+#include "uc_ipc_io.h"
+#include "uc_ipc_common.h"
 
 // RETURNS: 负数，读失败, OTHRES: 剩余读取数(0:读到了指定数量的数据)
 // closed: 0 接口未关闭， 1: 读的过程中，接口被关闭（对方关闭了 sock 等)
