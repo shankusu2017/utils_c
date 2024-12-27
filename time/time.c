@@ -81,9 +81,11 @@ static void *uc_timer_check_timeout(void *arg)
 {
     UNUSED(arg);
 
-    uint64_t us_next = uc_time_us() + 1000 * 1;   /* 微秒 */
 
     while (1) {
+        uint64_t us_begin = uc_time_us();
+        uint64_t us_end = us_begin + 1 * 1000;
+
         pthread_mutex_lock(&uc_timer_mtx);
 
         /* 毫秒是最低刻度了，每次 嘀嗒都往前走一格 */
@@ -278,14 +280,14 @@ static void *uc_timer_check_timeout(void *arg)
         pthread_mutex_unlock(&uc_timer_mtx);
 
         /* 计算下次的 checkpoint */
-        uint64_t us_now = uc_time_us();
-        /* s上面的代码执行耗时既然超过了1ms*/
-        if (us_now > us_next) {
-            us_next += 1000;
+        uint64_t us_mid = uc_time_us();
+        /* 上面的代码执行耗时既然超过了1ms，或者中途系统时间被调整到了未来某个点 */
+        if (us_mid >= us_end) {
+            continue;
+        } else if (us_mid < us_begin) { /* 时间被调整到了过去 */
             continue;
         } else {
-            uint64_t us_left = us_next - us_now;
-            us_next += 1000;
+            uint64_t us_left = us_end - us_mid;
             uc_time_usleep(us_left);
             continue;
         }
