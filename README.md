@@ -22,3 +22,6 @@ utils by c language in unix like
 
 - ### 版本整理
   - 整理头文件，发布v0.1版本
+
+- ### IPC 的 heartbeat
+  - 为了应对NAT的影响，client 定期和 server 交换 heartbeat

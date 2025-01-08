@@ -13,11 +13,15 @@ extern "C" {
 #endif
 
 typedef enum {
+    // uc_ipc_msg_type_min = 1,
+    // uc_ipc_msg_type_heartbeat = 1,
+
     uc_ipc_msg_type_void,
     uc_ipc_msg_type_async_send,
     uc_ipc_msg_type_async_ack,
     uc_ipc_msg_type_sync_send,
     uc_ipc_msg_type_sync_ack,
+    // uc_ipc_msg_type_sync_max = uc_ipc_msg_type_sync_ack,
 } uc_ipc_msg_type_t;
 
 typedef void *(*uc_ipc_callback)(uc_ipc_msg_type_t msg_type, void *addr, size_t len, void **return_addr, size_t *return_len);
