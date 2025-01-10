@@ -201,5 +201,8 @@ int main(int argc, char *argv[])
 
     log("test code run done, test result is ok\n");
 
+    while(1) {
+        uc_time_msleep(1*1000);
+    }
     return 0;
 }
