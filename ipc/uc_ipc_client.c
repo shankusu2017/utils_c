@@ -3,6 +3,7 @@
 #include "uc_ipc_io.h"
 
 static void *uc_ipc_client_loop_rcv(void *arg);
+static void *uc_ipc_client_heartbeat_loop_send(void *arg);
 
 static uint64_t uc_ipc_client_next_seq_id(uc_ipc_client_handler_t *hdl)
 {
