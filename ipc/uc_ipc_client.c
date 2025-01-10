@@ -95,7 +95,7 @@ static int uc_ipc_client_send(uc_ipc_client_handler_t *hdl, uint64_t seq_id, uc_
     proto_pkt->head.msg_type = msg_type;
     proto_pkt->head.seq_id = seq_id;
     proto_pkt->head.ack_id = UC_IPC_ACK_ID_NULL;
-    if (len) {
+    if (buf && len) {
         memcpy(proto_pkt->buf, buf, len);
     }
 
@@ -197,12 +197,13 @@ uc_ipc_client_handler_t *uc_ipc_init_client(char *server_ip, uint16_t server_por
         goto err_uninit;
     }
 
-    hdl->thread = uc_threadpool_create(2, 2);   /* 1 rcv, 1 send */
+    hdl->thread = uc_threadpool_create(3, 3);   /* 1 rcv, 1 send, 1 heartbeat */
     if (NULL == hdl->thread) {
         goto err_uninit;
     }
     uc_threadpool_set_task_max(hdl->thread, UC_IPC_CLIENT_THREAD_POOL_MSG_WAIT_MAX);
     uc_threadpool_add_void_task(hdl->thread, uc_ipc_client_loop_rcv, hdl);
+    uc_threadpool_add_void_task(hdl->thread, uc_ipc_client_heartbeat_loop_send, hdl);
     // 等待 接收线程跑起来
     uc_threadpool_wait_task_done(hdl->thread);
 
@@ -296,6 +297,29 @@ static void uc_ipc_client_reconnect(uc_ipc_client_handler_t *hdl, int reason) {
     printf("0x1159dc1d reconnection done...\n");
 }
 
+static void *uc_ipc_client_heartbeat_loop_send(void *arg)
+{
+    uc_ipc_client_handler_t *hdl = (uc_ipc_client_handler_t *)arg;
+
+    while (1) {
+        uint64_t msg_id = uc_ipc_client_next_seq_id(hdl);
+        int ret = uc_ipc_client_send(hdl, msg_id, uc_ipc_msg_type_heartbeat, NULL, 0);
+        if (ret) {
+            printf("0x6d9ba4ac insert pool fail, ret: %d", ret);
+            continue;
+        }
+        uc_time_msleep(UC_IPC_HEARTBEAT_INTERVAL);
+    }
+
+    return NULL;
+}
+
+static void uc_ipc_client_heartbeat_rcv(uc_ipc_proto_packet_t *msg)
+{
+    LOG_DEBUG("client rcv heartbeat.pong ttl:%ld, seq: %ld, ack: %ld", msg->head.ttl, msg->head.seq_id, msg->head.ack_id);
+    return;
+}
+
 // 客户端
 static void *uc_ipc_client_loop_rcv(void *arg)
 {
@@ -329,8 +353,16 @@ static void *uc_ipc_client_loop_rcv(void *arg)
             continue;
         }
 
-        if (msg->head.msg_type == uc_ipc_msg_type_async_ack ||
-            msg->head.msg_type == uc_ipc_msg_type_sync_ack) {
+        if (msg->head.msg_type == uc_ipc_msg_type_heartbeat) {
+            if (msg->head.ack_id < UC_IPC_SEQ_ID_MIN) {
+                uc_ipc_client_reconnect(hdl, 0x1d53361d);  /* reconnect........ */
+                continue;
+            }
+            uc_ipc_client_heartbeat_rcv(msg);
+            free(msg);
+            msg = NULL;
+        } else if (msg->head.msg_type == uc_ipc_msg_type_async_ack ||
+                   msg->head.msg_type == uc_ipc_msg_type_sync_ack) {
             if (msg->head.ack_id < UC_IPC_SEQ_ID_MIN) {
                 uc_ipc_client_reconnect(hdl, 0x13a5edcb);  /* reconnect........ */
                 continue;

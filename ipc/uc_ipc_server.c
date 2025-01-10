@@ -452,6 +452,30 @@ static int uc_ipc_server_read_client(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t 
     }
 }
 
+static void uc_ipc_server_heartbeat_cb(uc_ipc_server_handler_t *hdl, uc_ipc_pipe_data_t *arg)
+{
+    LOG_DEBUG("0x65e7feaa server rcv heartbeat.ping, ttl: %ld, seq_id: %ld, ack_id: %ld\n",
+              arg->ipc_head.ttl, arg->ipc_head.seq_id, arg->ipc_head.ack_id);
+
+    arg->return_len = arg->ipc_head.ttl;
+
+    // 来什么，复制一份回过去
+    if (arg->return_len) {
+        arg->return_addr = malloc(arg->return_len);
+        if (NULL == arg->return_addr) {
+            LOG_ERROR("0x52e2816b oom, heartbeat pkg cb fail, seq_id: %ld", arg->ipc_head.seq_id);
+            return;
+        }
+        memcpy(arg->return_addr, arg->buf, arg->return_len);
+    }
+
+    int ret = uc_ipc_server_send_msg(hdl, arg->cli_uuid, arg->ipc_head.seq_id, uc_ipc_msg_type_heartbeat, arg->return_addr, arg->return_len);
+    if (ret) {
+        LOG_ERROR("0x3aef2171 io, heartbeat pkg cb fail, seq_id: %ld", arg->ipc_head.seq_id);
+    }
+
+    return;
+}
 
 
 static int uc_ipc_server_handle_client_msg(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *cli)
@@ -478,7 +502,10 @@ static int uc_ipc_server_handle_client_msg(uc_ipc_server_handler_t *hdl, uc_ipc_
     /* 重置 cli, 为读下一份 msg 做准备 */
     uc_ipc_server_reset_cli_proto(cli);
 
-    if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_void) {
+    if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_heartbeat) {
+        uc_ipc_server_heartbeat_cb(hdl, pipe_msg);
+        uc_ipc_server_free_pipe_msg(pipe_msg);
+    } else if (pipe_msg->ipc_head.msg_type == uc_ipc_msg_type_void) {
         #ifdef IPC_DEBUG_IO
             static size_t rcv_ttl = 0;
             if (++rcv_ttl % 10000 == 0) {
@@ -533,7 +560,7 @@ static void uc_ipc_server_free_pipe_msg(uc_ipc_pipe_data_t *pipe_msg)
     pipe_msg->return_len = 0;
 
     free(pipe_msg);
-    // pipe_msg = NULL;
+    pipe_msg = NULL;
 }
 
 static void *uc_ipc_server_loop_callback(void *arg)
@@ -598,7 +625,7 @@ static int uc_ipc_server_send_msg(uc_ipc_server_handler_t *hdl, uint64_t cli_uui
     data->head.seq_id = seq_id;
     data->head.ack_id = ack_id;
 
-    if (len) {
+    if (buf && len) {
         memcpy(data->buf, buf, len);
     }
 

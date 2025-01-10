@@ -57,7 +57,7 @@ typedef struct uc_ipc_server_handler_s {
 
 
     pthread_mutex_t cli_fd_mutex;               /* lock ----------------> */
-    uc_hash_table_t *cli_fd_hash;                  /* 客户端hash(uuid->fd) */
+    uc_hash_table_t *cli_fd_hash;               /* 客户端hash(uuid->fd) */
                                                 /* lock ----------------> */
 
     uint64_t            seq_id;        /* 下一条发送的消息ID */
@@ -65,8 +65,8 @@ typedef struct uc_ipc_server_handler_s {
 
     uc_threadpool_t *thread;
 
-    uc_ipc_callback cb;            /* 消息回调函数 */
-    int pipe[2];                /* recv->callback */
+    uc_ipc_callback cb;                 /* 消息回调函数 */
+    int pipe[2];                        /* recv->callback */
 
     /* 统计用 */
     uint64_t rcv_byte_ttl;
@@ -125,9 +125,9 @@ typedef struct uc_ipc_cli_s {
 } uc_ipc_cli_t;
 
 typedef struct uc_ipc_pipe_data_s {
-    uint64_t cli_uuid;                  /* 客户端的唯一标识符，在回调线程中回写数据时，需要通过 uuid 找到 cli 的实时信息(主要是fd) */
-    uc_ipc_proto_header_t ipc_head;        /* 消息头 */
-    char *buf;                          /* 消息负载 */
+    uint64_t cli_uuid;                      /* 客户端的唯一标识符，在回调线程中回写数据时，需要通过 uuid 找到 cli 的实时信息(主要是fd) */
+    uc_ipc_proto_header_t ipc_head;         /* 消息头 */
+    char *buf;                              /* 消息负载 */
     void *return_addr;
     size_t return_len;
 } uc_ipc_pipe_data_t;
@@ -144,7 +144,7 @@ typedef struct uc_packet_send_s {
 
 
 #ifndef UC_IPC_SERVER_CLIENT_MAP_SIZE
-#define UC_IPC_SERVER_CLIENT_MAP_SIZE (1024)
+#define UC_IPC_SERVER_CLIENT_MAP_SIZE (4096)
 #endif
 
 #ifndef UC_IPC_CLIENT_SEQ_HASH_SIZE
@@ -153,6 +153,11 @@ typedef struct uc_packet_send_s {
 
 #ifndef UC_IPC_CLIENT_ACK_WAIT
 #define UC_IPC_CLIENT_ACK_WAIT (3*1000)
+#endif
+
+/* 单次心跳包间隔（单位：毫秒）*/
+#ifndef UC_IPC_HEARTBEAT_INTERVAL
+#define UC_IPC_HEARTBEAT_INTERVAL (3*1000)
 #endif
 
 #ifndef UC_IPC_CLIENT_THREAD_POOL_MSG_WAIT_MAX
