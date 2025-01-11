@@ -12,6 +12,9 @@ static void *uc_ipc_server_loop_callback(void *arg);
 static int uc_ipc_server_send_msg(uc_ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id, uc_ipc_msg_type_t msg_type, void *buf, size_t len);
 static void uc_ipc_server_free_pipe_msg(uc_ipc_pipe_data_t *msg);
 
+/* 
+ * 生成下一个序列号 
+ */
 static uint64_t uc_ipc_server_next_seq_id(uc_ipc_server_handler_t *hdl)
 {
     uint64_t next = 0;
@@ -26,17 +29,23 @@ static uint64_t uc_ipc_server_next_seq_id(uc_ipc_server_handler_t *hdl)
     return next;
 }
 
+/* 
+ * 给客户端发送指定的 ACK
+ */
 static int uc_ipc_server_send_ack(uc_ipc_server_handler_t *hdl, uint64_t cli_uuid, uint64_t ack_id)
 {
     int ret = uc_ipc_server_send_msg(hdl, cli_uuid, ack_id, uc_ipc_msg_type_async_ack, NULL, 0);
     if (ret) {
-        printf("0x274ceea5 send pool fail, ret: %d", ret);
+        LOG_ERROR("0x274ceea5 send pool fail, ret: %d", ret);
         return -0x274ceea5;
     }
 
     return ret;
 }
 
+/*
+ * 重置接收客户端数据的结构体
+ */
 static void uc_ipc_server_reset_cli_proto(uc_ipc_cli_t *cli)
 {
     cli->has_read = cli->head_done = cli->buf_done = 0;
@@ -56,7 +65,7 @@ static void uc_ipc_server_close_cli(uc_ipc_server_handler_t *hdl, uc_ipc_cli_t *
 
     uc_hash_key_t key = {.u64 = uuid};
 
-    printf("0x085a33b8 close client, uuid: %lx\n", uuid);
+    LOG_NOTICE("0x085a33b8 close client, uuid: %lx\n", uuid);
 
     /* 解除 uuid->fd 的映射*/
     pthread_mutex_lock(&hdl->cli_fd_mutex);

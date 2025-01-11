@@ -120,12 +120,12 @@ typedef struct uc_ipc_cli_s {
     struct sockaddr_in addr;        /* 客户端地址 */
     uint64_t uuid;                  /* 客户端的唯一标识符 */
 
-    /* 读数据后，解析协议相关 */
+    /* 读数据，解析协议相关 */
     size_t has_read;                /* 本次数据包已读取的字节数(包含协议头在内) */
     int head_done;                  /* 协议头，buf 是否读取完毕 */
     int buf_done;
-    uc_ipc_proto_header_t ipc_head;    /* 协议头*/
-    void *buf;                      /* 负载 */
+    uc_ipc_proto_header_t ipc_head;     /* 协议头*/
+    void *buf;                          /* 负载 */
 } uc_ipc_cli_t;
 
 typedef struct uc_ipc_pipe_data_s {
