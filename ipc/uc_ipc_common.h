@@ -53,6 +53,10 @@ typedef struct uc_ipc_server_handler_s {
 
     int epoll;
 
+/* 不直接用MAP(client.fd, client.info)的原因是，
+ * 服务端接收和处理 msg 是两个独立的线程，在处理线程处理 msg 的时候，接收线程可能发现该消息的 fd 已经失效
+ * 故而采用唯一的 client.uuid 替代 fd
+ */
     uc_hash_table_t *cli_info_hash;     /* 客户端hash(uuid->client.info),读线程独占，无需mutex */
 
 
@@ -60,13 +64,13 @@ typedef struct uc_ipc_server_handler_s {
     uc_hash_table_t *cli_fd_hash;               /* 客户端hash(uuid->fd) */
                                                 /* lock ----------------> */
 
-    uint64_t            seq_id;        /* 下一条发送的消息ID */
+    uint64_t            seq_id;                 /* 下一条发送的消息ID */
     pthread_mutex_t     seq_mutex;
 
     uc_threadpool_t *thread;
 
-    uc_ipc_callback cb;                 /* 消息回调函数 */
-    int pipe[2];                        /* recv->callback */
+    uc_ipc_callback cb;                         /* 消息回调函数 */
+    int pipe[2];                                /* recv->callback */
 
     /* 统计用 */
     uint64_t rcv_byte_ttl;
